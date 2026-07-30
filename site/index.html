@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Yılan II — 3310 Edition</title>
+  <meta name="description" content="Nokia 3310 döneminden ilham alan klasik yılan oyunu.">
+  <style>
+    :root{--ink:#182515;--lcd:#a9bd70}*{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{background:radial-gradient(circle at 50% 15%,#4e6171,#111b24 70%);color:#fff;font-family:"Courier New",monospace}
+    button{font:inherit}main{min-height:100vh;display:grid;place-items:center;padding:20px 10px;overflow:hidden}
+    .phone{width:min(390px,96vw);padding:27px 36px 22px;border-radius:54px 54px 76px 76px/70px 70px 42px 42px;background:linear-gradient(105deg,#516f87,#213c55 28%,#375a73 68%,#182d40);border:2px solid #7894a7;box-shadow:inset 10px 0 20px #ffffff18,inset -12px 0 20px #0008,0 35px 80px #000b}
+    .speaker{display:flex;justify-content:center;gap:6px;margin:0 auto 8px}.speaker i{width:4px;height:25px;border-radius:4px;background:#142838;box-shadow:inset 1px 0 #7895a8}
+    .brand{text-align:center;font:900 22px Arial,sans-serif;letter-spacing:2px;margin-bottom:12px;text-shadow:0 2px #173047}
+    .screen-shell{border-radius:48% 52% 46% 54%/24% 22% 78% 76%;padding:28px 25px 42px;background:linear-gradient(145deg,#273843,#0c1820);box-shadow:inset 0 3px 10px #000,0 2px #6b8393}
+    .screen{background:var(--lcd);color:var(--ink);border:4px solid #111c19;box-shadow:inset 0 0 12px #506339;padding:7px}
+    header,footer{display:flex;justify-content:space-between;font-weight:900;font-size:11px}footer{justify-content:center;padding-top:5px}
+    #board{margin-top:5px;display:grid;grid-template-columns:repeat(18,1fr);aspect-ratio:1;border:2px solid var(--ink);background:#9caf68;position:relative}
+    .cell{position:relative}.snake:after{content:"";position:absolute;inset:1px;background:var(--ink);box-shadow:inset 1px 1px #5e7345}.head:after{border-radius:2px;box-shadow:inset 2px 2px #91a662}
+    .food:after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--ink);box-shadow:-2px -2px 0 -1px var(--ink),2px -2px 0 -1px var(--ink)}
+    #message{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);min-width:76%;padding:10px 5px;border:3px double var(--ink);background:var(--lcd);color:var(--ink);font-weight:900;cursor:pointer}#message small{display:block;margin-top:6px;font-size:9px}
+    .softkeys{display:flex;justify-content:space-between;margin:12px 25px 0}.softkeys button{width:94px;height:34px;border:0;color:#b7cbd7;font-size:10px;font-weight:bold;border-radius:50%;background:linear-gradient(#263c4c,#102331);box-shadow:0 4px 7px #0008,inset 0 1px #698093}
+    .controls{width:180px;height:142px;margin:10px auto 0;position:relative}.controls button{position:absolute;border:0;color:#9db1bf;background:linear-gradient(145deg,#294455,#0c1e2c);box-shadow:0 4px 8px #0009,inset 1px 1px #688293;cursor:pointer;user-select:none}.controls button:active,.softkeys button:active{transform:translateY(2px);filter:brightness(.8)}
+    .up,.down{width:62px;height:54px;left:59px}.left,.right{width:62px;height:54px;top:44px}.up{top:0;border-radius:50% 50% 15% 15%}.down{bottom:0;border-radius:15% 15% 50% 50%}.left{left:10px;border-radius:50% 15% 15% 50%}.right{right:10px;border-radius:15% 50% 50% 15%}.center{width:56px;height:56px;left:62px;top:43px;z-index:2;border-radius:50%}
+    .hint{text-align:center;font-size:9px;color:#a7b9c4;margin:4px 0 0}@media(max-height:760px){main{padding:8px}.phone{transform:scale(.86);margin:-55px 0}}
+  </style>
+</head>
+<body>
+<main><section class="phone" aria-label="Nokia 3310 tarzı yılan oyunu">
+  <div class="speaker"><i></i><i></i><i></i><i></i><i></i></div><div class="brand">NOKIA</div>
+  <div class="screen-shell"><div class="screen"><header><span>YILAN II</span><span id="score">SKOR 000</span></header><div id="board" role="application" aria-label="Oyun alanı"><button id="message">YILAN II<small>BAŞLAMAK İÇİN BAS</small></button></div><footer id="info">REKOR 000 · HIZ 1</footer></div></div>
+  <div class="softkeys"><button id="select">SEÇ</button><button id="back">GERİ</button></div>
+  <div class="controls" aria-label="Yön tuşları"><button class="up" data-dir="up" aria-label="Yukarı">▲</button><button class="left" data-dir="left" aria-label="Sol">◀</button><button class="center" id="pause" aria-label="Duraklat">●</button><button class="right" data-dir="right" aria-label="Sağ">▶</button><button class="down" data-dir="down" aria-label="Aşağı">▼</button></div>
+  <p class="hint">OK TUŞLARI / WASD · BOŞLUK: DURAKLAT</p>
+</section></main>
+<script>
+  const C=18,R=18,D={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},board=document.querySelector("#board"),message=document.querySelector("#message"),scoreEl=document.querySelector("#score"),info=document.querySelector("#info");
+  let snake,food,dir,status,score,best=+(localStorage.getItem("snake-best")||0),timer;
+  for(let i=0;i<C*R;i++){const e=document.createElement("i");e.className="cell";board.insertBefore(e,message)}
+  const cells=[...document.querySelectorAll(".cell")];
+  function emptyFood(){const free=cells.map((_,i)=>[i%C,Math.floor(i/C)]).filter(([x,y])=>!snake.some(p=>p[0]===x&&p[1]===y));return free[Math.floor(Math.random()*free.length)]||[2,2]}
+  function render(){cells.forEach(e=>e.className="cell");snake.forEach((p,i)=>cells[p[1]*C+p[0]].className="cell snake"+(i?"":" head"));cells[food[1]*C+food[0]].classList.add("food");scoreEl.textContent=`SKOR ${String(score).padStart(3,"0")}`;info.textContent=`REKOR ${String(best).padStart(3,"0")} · HIZ ${Math.min(9,1+Math.floor(score/4))}`}
+  function start(){if(status==="playing")return;if(status==="ready"||status==="over"){snake=[[8,9],[7,9],[6,9]];food=[13,9];dir="right";score=0}status="playing";message.hidden=true;loop()}
+  function loop(){clearTimeout(timer);if(status!=="playing")return;timer=setTimeout(()=>{const [dx,dy]=D[dir],h=[snake[0][0]+dx,snake[0][1]+dy];if(h[0]<0||h[0]>=C||h[1]<0||h[1]>=R||snake.some(p=>p[0]===h[0]&&p[1]===h[1])){status="over";best=Math.max(best,score);localStorage.setItem("snake-best",best);message.innerHTML=`OYUN BİTTİ<small>SKOR ${score} · TEKRAR OYNA</small>`;message.hidden=false;render();return}snake.unshift(h);if(h[0]===food[0]&&h[1]===food[1]){score++;food=emptyFood()}else snake.pop();render();loop()},Math.max(72,175-score*4))}
+  function turn(n){const a=D[dir],b=D[n];if(a[0]+b[0]||a[1]+b[1])dir=n;if(status==="ready")start()}
+  function pause(){if(status==="playing"){status="paused";clearTimeout(timer);message.innerHTML="DURAKLATILDI<small>DEVAM ET</small>";message.hidden=false}else if(status==="paused"){status="playing";message.hidden=true;loop()}else start()}
+  document.querySelectorAll("[data-dir]").forEach(b=>b.onclick=()=>turn(b.dataset.dir));message.onclick=start;document.querySelector("#select").onclick=start;document.querySelector("#pause").onclick=pause;document.querySelector("#back").onclick=pause;
+  addEventListener("keydown",e=>{const m={ArrowUp:"up",w:"up",W:"up",ArrowDown:"down",s:"down",S:"down",ArrowLeft:"left",a:"left",A:"left",ArrowRight:"right",d:"right",D:"right"};if(m[e.key]){e.preventDefault();turn(m[e.key])}else if(e.key===" "||e.key==="Enter"){e.preventDefault();pause()}});
+  snake=[[8,9],[7,9],[6,9]];food=[13,9];dir="right";status="ready";score=0;render();
+</script>
+</body></html>
