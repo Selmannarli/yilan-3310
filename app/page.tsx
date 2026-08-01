@@ -40,7 +40,7 @@ export default function Home() {
   const isVote = card.kind === "vote";
   const maxSelections = Math.min(card.maxSelections ?? 1, Math.max(1, (room?.players.length ?? 2) - 1));
   const allVotesIn = Boolean(room && isVote && room.players.filter((p) => p.connected).every((p) => room.votedPlayerIds?.includes(p.id)));
-  const accent = categoryMeta[card.kind]?.color ?? "#c9ff37";
+  const accent = categoryMeta[card.kind]?.color ?? "#a855f7";
   const shareUrl = typeof window === "undefined" ? "" : `${location.origin}?room=${roomCode}`;
 
   function send(message: object) { if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message)); }
@@ -99,7 +99,7 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <button className="brand" onClick={leave} aria-label="Ana ekran"><span className="brand-mark">S!</span><span>SHOT!</span></button>
+        <button className="brand" onClick={leave} aria-label="SHOT ana ekran"><span className="brand-mark"><i>!</i></span><span className="brand-word">SHOT<span>!</span></span></button>
         <div className="room-pill"><i className={connection === "online" ? "" : "offline"}/> ODA <strong>{roomCode ? `${roomCode.slice(0,3)} ${roomCode.slice(3)}` : "— — —"}</strong></div>
         <button className="icon-button" onClick={() => isHost && send({ type: "pause" })} aria-label="Ayarlar">⚙</button>
       </header>

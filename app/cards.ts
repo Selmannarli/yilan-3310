@@ -5,8 +5,8 @@ export type VoteOutcome = "highest" | "lowest" | "zero" | "tie_all" | "except_to
 export type Card = { id: number; kind: CardKind; category: string; icon: string; text: string; tag: string; maxSelections?: number; outcome?: VoteOutcome };
 
 export const categoryMeta: Record<CardKind, { label: string; color: string; icon: string }> = {
-  condition: { label: "Koşul", color: "#c9ff37", icon: "◎" },
-  vote: { label: "Oylama", color: "#a98bff", icon: "✦" },
+  condition: { label: "Koşul", color: "#a855f7", icon: "◎" },
+  vote: { label: "Oylama", color: "#c084fc", icon: "✦" },
   duel: { label: "Düello", color: "#ff5757", icon: "⚔" },
 };
 
