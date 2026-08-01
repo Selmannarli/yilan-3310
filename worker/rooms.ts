@@ -5,7 +5,7 @@ export interface Env {
 }
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: unknown | null };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: unknown | null; responses: Record<string, boolean>; confirmed: boolean };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -30,7 +30,7 @@ export default {
 };
 
 export class GameRoom extends DurableObject<Env> {
-  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, currentPlayer: 0, card: null };
+  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, currentPlayer: 0, card: null, responses: {}, confirmed: false };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -74,11 +74,16 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.type === "start" && isHost) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0 });
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
       if (msg.type === "card" && isHost) this.state.card = msg.card;
+      if (msg.type === "answer" && this.state.phase === "playing" && !this.state.confirmed) this.state.responses[playerId] = Boolean(msg.drank);
+      if (msg.type === "confirm" && isHost && !this.state.confirmed) {
+        this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.responses[p.id] ? 1 : 0) }));
+        this.state.confirmed = true;
+      }
       if (msg.type === "shots" && isHost) {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: Math.max(0, Number(msg.shots?.[p.id] ?? p.shots)) }));
       }
       if (msg.type === "next" && isHost && this.state.players.length) {
-        this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null;
+        this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.responses = {}; this.state.confirmed = false;
       }
       if (msg.type === "transfer" && isHost && this.state.players.some((p) => p.id === msg.playerId)) this.state.hostId = msg.playerId;
       if (msg.type === "kick" && isHost && msg.playerId !== playerId) this.state.players = this.state.players.filter((p) => p.id !== msg.playerId);
