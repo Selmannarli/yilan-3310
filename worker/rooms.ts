@@ -63,6 +63,7 @@ export class GameRoom extends DurableObject<Env> {
       this.state.players.push(player);
       if (!this.state.hostId) this.state.hostId = playerId;
     }
+    this.ensureHost();
     await this.saveAndBroadcast();
     server.send(JSON.stringify({ type: "welcome", playerId, state: this.publicState(playerId) }));
     return new Response(null, { status: 101, webSocket: client });
@@ -72,6 +73,7 @@ export class GameRoom extends DurableObject<Env> {
     const { playerId } = (ws.deserializeAttachment() || {}) as { playerId: string };
     try {
       const msg = JSON.parse(typeof raw === "string" ? raw : new TextDecoder().decode(raw));
+      this.ensureHost();
       const isHost = this.state.hostId === playerId;
       if (msg.type === "start" && isHost) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0 });
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
@@ -121,12 +123,21 @@ export class GameRoom extends DurableObject<Env> {
   private async disconnect(ws: WebSocket) {
     const { playerId } = (ws.deserializeAttachment() || {}) as { playerId?: string };
     if (!playerId) return;
+    const hasAnotherConnection = this.ctx.getWebSockets().some((socket) => {
+      const meta = socket.deserializeAttachment() as { playerId?: string } | null;
+      return socket !== ws && socket.readyState === WebSocket.OPEN && meta?.playerId === playerId;
+    });
+    if (hasAnotherConnection) return;
     this.setConnected(playerId, false);
-    if (this.state.hostId === playerId) this.state.hostId = this.state.players.find((p) => p.connected && p.id !== playerId)?.id ?? this.state.players.find((p) => p.id !== playerId)?.id ?? null;
+    this.ensureHost();
     await this.saveAndBroadcast();
   }
 
   private setConnected(id: string, connected: boolean) { const p = this.state.players.find((x) => x.id === id); if (p) p.connected = connected; }
+  private ensureHost() {
+    const host = this.state.players.find((p) => p.id === this.state.hostId);
+    if (!host?.connected) this.state.hostId = this.state.players.find((p) => p.connected)?.id ?? this.state.players[0]?.id ?? null;
+  }
   private publicState(viewerId?: string) {
     const tally: Record<string, number> = {};
     if (this.state.voteRevealed) Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
