@@ -5,7 +5,8 @@ export interface Env {
 }
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: unknown | null; responses: Record<string, boolean>; confirmed: boolean };
+type GameCard = { id?: number; kind?: string; maxSelections?: number; [key: string]: unknown };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: GameCard | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -30,12 +31,13 @@ export default {
 };
 
 export class GameRoom extends DurableObject<Env> {
-  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, currentPlayer: 0, card: null, responses: {}, confirmed: false };
+  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, currentPlayer: 0, card: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
-      this.state = (await ctx.storage.get<RoomState>("state")) ?? this.state;
+      const stored = await ctx.storage.get<RoomState>("state");
+      this.state = { ...this.state, ...(stored ?? {}), responses: stored?.responses ?? {}, votes: stored?.votes ?? {} };
       for (const ws of ctx.getWebSockets()) {
         const meta = ws.deserializeAttachment() as { playerId?: string } | null;
         if (meta?.playerId) this.setConnected(meta.playerId, true);
@@ -62,7 +64,7 @@ export class GameRoom extends DurableObject<Env> {
       if (!this.state.hostId) this.state.hostId = playerId;
     }
     await this.saveAndBroadcast();
-    server.send(JSON.stringify({ type: "welcome", playerId, state: this.publicState() }));
+    server.send(JSON.stringify({ type: "welcome", playerId, state: this.publicState(playerId) }));
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -75,7 +77,21 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
       if (msg.type === "card" && isHost) this.state.card = msg.card;
       if (msg.type === "answer" && this.state.phase === "playing" && !this.state.confirmed) this.state.responses[playerId] = Boolean(msg.drank);
-      if (msg.type === "confirm" && isHost && !this.state.confirmed) {
+      if (msg.type === "vote" && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
+        const max = Math.max(1, Math.min(2, Number(this.state.card.maxSelections ?? 1)));
+        const validIds = new Set(this.state.players.filter((p) => p.id !== playerId).map((p) => p.id));
+        const selections = [...new Set(Array.isArray(msg.selections) ? msg.selections : [])].filter((id) => validIds.has(id)).slice(0, max);
+        if (selections.length === max) this.state.votes[playerId] = selections;
+      }
+      if (msg.type === "revealVotes" && isHost && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
+        const tally: Record<string, number> = {};
+        Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
+        const top = Math.max(0, ...Object.values(tally));
+        this.state.voteWinners = top ? Object.keys(tally).filter((id) => tally[id] === top) : [];
+        this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.voteWinners.includes(p.id) ? 1 : 0) }));
+        this.state.voteRevealed = true; this.state.confirmed = true;
+      }
+      if (msg.type === "confirm" && isHost && !this.state.confirmed && this.state.card?.kind !== "vote") {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.responses[p.id] ? 1 : 0) }));
         this.state.confirmed = true;
       }
@@ -83,7 +99,7 @@ export class GameRoom extends DurableObject<Env> {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: Math.max(0, Number(msg.shots?.[p.id] ?? p.shots)) }));
       }
       if (msg.type === "next" && isHost && this.state.players.length) {
-        this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.responses = {}; this.state.confirmed = false;
+        this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.confirmed = false;
       }
       if (msg.type === "transfer" && isHost && this.state.players.some((p) => p.id === msg.playerId)) this.state.hostId = msg.playerId;
       if (msg.type === "kick" && isHost && msg.playerId !== playerId) this.state.players = this.state.players.filter((p) => p.id !== msg.playerId);
@@ -103,10 +119,17 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private setConnected(id: string, connected: boolean) { const p = this.state.players.find((x) => x.id === id); if (p) p.connected = connected; }
-  private publicState() { return { ...this.state, playerCount: this.state.players.length }; }
+  private publicState(viewerId?: string) {
+    const tally: Record<string, number> = {};
+    if (this.state.voteRevealed) Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
+    const { votes: _secretVotes, ...safe } = this.state;
+    return { ...safe, playerCount: this.state.players.length, votedPlayerIds: Object.keys(this.state.votes), myVote: viewerId ? this.state.votes[viewerId] ?? [] : [], voteTally: tally };
+  }
   private async saveAndBroadcast() {
     await this.ctx.storage.put("state", this.state);
-    const message = JSON.stringify({ type: "state", state: this.publicState() });
-    for (const socket of this.ctx.getWebSockets()) try { socket.send(message); } catch { /* closed */ }
+    for (const socket of this.ctx.getWebSockets()) try {
+      const meta = socket.deserializeAttachment() as { playerId?: string } | null;
+      socket.send(JSON.stringify({ type: "state", state: this.publicState(meta?.playerId) }));
+    } catch { /* closed */ }
   }
 }
