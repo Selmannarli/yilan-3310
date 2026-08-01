@@ -6,7 +6,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Üzerinde siyah kıyafet bulunan herkes shot atsın."
   },
   {
@@ -14,7 +14,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce gözaltına alınan herkes shot atsın."
   },
   {
@@ -22,7 +22,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce aldatılan herkes shot atsın."
   },
   {
@@ -30,7 +30,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce birini aldatan herkes shot atsın."
   },
   {
@@ -38,7 +38,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Dövmesi olan herkes shot atsın."
   },
   {
@@ -46,7 +46,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Piercingi olan herkes shot atsın."
   },
   {
@@ -54,7 +54,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gözlük kullanan herkes shot atsın."
   },
   {
@@ -62,7 +62,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Ehliyeti olmayan herkes shot atsın."
   },
   {
@@ -70,7 +70,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce trafik cezası alan herkes shot atsın."
   },
   {
@@ -78,7 +78,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce uçağını kaçıran herkes shot atsın."
   },
   {
@@ -86,7 +86,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce yanlış trene veya otobüse binen herkes shot atsın."
   },
   {
@@ -94,7 +94,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce işten kovulan herkes shot atsın."
   },
   {
@@ -102,15 +102,15 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce istifa eden herkes shot atsın."
   },
   {
     "id": 1014,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son bir yıl içinde iş değiştiren herkes shot atsın."
   },
   {
@@ -118,7 +118,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Şu anda ilişkisinde mutlu olmayan herkes shot atsın."
   },
   {
@@ -126,7 +126,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Şu anda sevgilisi olan herkes shot atsın."
   },
   {
@@ -134,7 +134,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Şu anda bekâr olan herkes shot atsın."
   },
   {
@@ -142,7 +142,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Eski sevgilisiyle hâlâ konuşan herkes shot atsın."
   },
   {
@@ -150,7 +150,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunda eski sevgilisinin fotoğrafı bulunan herkes shot atsın."
   },
   {
@@ -158,7 +158,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Eski sevgilisini sosyal medyada gizlice kontrol eden herkes shot atsın."
   },
   {
@@ -166,7 +166,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce eski sevgilisine geri dönen herkes shot atsın."
   },
   {
@@ -174,7 +174,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Aynı kişiden birden fazla kez ayrılan herkes shot atsın."
   },
   {
@@ -182,7 +182,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Arkadaşının eski sevgilisiyle flört eden herkes shot atsın."
   },
   {
@@ -190,7 +190,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki biriyle daha önce flört eden herkes shot atsın."
   },
   {
@@ -198,7 +198,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki birinden daha önce hoşlanan herkes shot atsın."
   },
   {
@@ -206,7 +206,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki biriyle daha önce tartışan herkes shot atsın."
   },
   {
@@ -214,7 +214,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki birini sosyal medyada sessize alan herkes shot atsın."
   },
   {
@@ -222,7 +222,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki birinin sırrını bilen herkes shot atsın."
   },
   {
@@ -230,7 +230,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki biri hakkında dedikodu yapan herkes shot atsın."
   },
   {
@@ -238,7 +238,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki birine daha önce yalan söyleyen herkes shot atsın."
   },
   {
@@ -246,7 +246,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce sahte isim kullanan herkes shot atsın."
   },
   {
@@ -254,7 +254,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce yaşını yanlış söyleyen herkes shot atsın."
   },
   {
@@ -262,7 +262,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce mesajını bilerek geç cevaplayan herkes shot atsın."
   },
   {
@@ -270,7 +270,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bir mesajı okuyup cevap vermeyen herkes shot atsın."
   },
   {
@@ -278,7 +278,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gönderdiği mesajı sonradan silen herkes shot atsın."
   },
   {
@@ -286,7 +286,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Yanlış kişiye mesaj gönderen herkes shot atsın."
   },
   {
@@ -294,7 +294,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Eski mesajlarını okuyup utanan herkes shot atsın."
   },
   {
@@ -302,7 +302,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunda cevaplamadığı en az on mesaj bulunan herkes shot atsın."
   },
   {
@@ -310,7 +310,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunun şarjı yüzde yirminin altında olan herkes shot atsın."
   },
   {
@@ -318,7 +318,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefon ekranı kırık olan herkes shot atsın."
   },
   {
@@ -326,15 +326,15 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunda yüzden fazla ekran görüntüsü olan herkes shot atsın."
   },
   {
     "id": 1042,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son bir saat içinde sosyal medyaya giren herkes shot atsın."
   },
   {
@@ -342,7 +342,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün selfie çeken herkes shot atsın."
   },
   {
@@ -350,7 +350,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Profil fotoğrafını son bir ay içinde değiştiren herkes shot atsın."
   },
   {
@@ -358,7 +358,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Sahte sosyal medya hesabı bulunan herkes shot atsın."
   },
   {
@@ -366,7 +366,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Birini sahte hesaptan kontrol eden herkes shot atsın."
   },
   {
@@ -374,7 +374,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce takipçi satın almayı düşünen herkes shot atsın."
   },
   {
@@ -382,7 +382,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce gönderisine gelen beğeni sayısını sürekli kontrol eden herkes shot atsın."
   },
   {
@@ -390,7 +390,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu hafta en az bir kez yalan söyleyen herkes shot atsın."
   },
   {
@@ -398,7 +398,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün duş almayan herkes shot atsın."
   },
   {
@@ -406,7 +406,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün kahve içen herkes shot atsın."
   },
   {
@@ -414,7 +414,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün geç kalan herkes shot atsın."
   },
   {
@@ -422,7 +422,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün spor yapan herkes shot atsın."
   },
   {
@@ -430,7 +430,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün ailesiyle konuşan herkes shot atsın."
   },
   {
@@ -438,7 +438,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün işe veya okula gitmeyen herkes shot atsın."
   },
   {
@@ -446,7 +446,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün en az bir kez küfür eden herkes shot atsın."
   },
   {
@@ -454,7 +454,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Dün gece beş saatten az uyuyan herkes shot atsın."
   },
   {
@@ -462,31 +462,31 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Geçen hafta en az bir kez ağlayan herkes shot atsın."
   },
   {
     "id": 1059,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son bir ay içinde doktora giden herkes shot atsın."
   },
   {
     "id": 1060,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son bir ay içinde saçını değiştiren herkes shot atsın."
   },
   {
     "id": 1061,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son bir yıl içinde başka bir ülkeye giden herkes shot atsın."
   },
   {
@@ -494,7 +494,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Üçten fazla ülkede yaşayan herkes shot atsın."
   },
   {
@@ -502,7 +502,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "İki veya daha fazla dil konuşabilen herkes shot atsın."
   },
   {
@@ -510,7 +510,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Doğduğu şehirden başka bir şehirde yaşayan herkes shot atsın."
   },
   {
@@ -518,7 +518,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Yurt dışında yaşayan herkes shot atsın."
   },
   {
@@ -526,7 +526,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce tek başına seyahat eden herkes shot atsın."
   },
   {
@@ -534,7 +534,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce tatilde kavga eden herkes shot atsın."
   },
   {
@@ -542,7 +542,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce otelde bir eşya unutan herkes shot atsın."
   },
   {
@@ -550,7 +550,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce kaybolan herkes shot atsın."
   },
   {
@@ -558,7 +558,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce pasaportunu veya kimliğini kaybeden herkes shot atsın."
   },
   {
@@ -566,7 +566,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce bir düğünden erken kaçan herkes shot atsın."
   },
   {
@@ -574,7 +574,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce bir doğum gününü unutan herkes shot atsın."
   },
   {
@@ -582,7 +582,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce hediye aldığı bir şeyi başkasına veren herkes shot atsın."
   },
   {
@@ -590,7 +590,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce kendi hediyesini beğenmiş gibi yapan herkes shot atsın."
   },
   {
@@ -598,7 +598,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce bir arkadaşının yemeğini izinsiz yiyen herkes shot atsın."
   },
   {
@@ -606,7 +606,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce restorandan çatal, bardak veya başka bir eşya alan herkes shot atsın."
   },
   {
@@ -614,7 +614,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce hesabı ödememek için sessiz kalan herkes shot atsın."
   },
   {
@@ -622,7 +622,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce borcunu geç ödeyen herkes shot atsın."
   },
   {
@@ -630,7 +630,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Şu anda birine borcu olan herkes shot atsın."
   },
   {
@@ -638,7 +638,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Birinin hâlâ kendisine borcu olduğunu düşünen herkes shot atsın."
   },
   {
@@ -646,7 +646,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce kumar oynayan herkes shot atsın."
   },
   {
@@ -654,7 +654,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce iddiaya girip kaybeden herkes shot atsın."
   },
   {
@@ -662,7 +662,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce sınavda kopya çeken herkes shot atsın."
   },
   {
@@ -670,7 +670,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce sahte rapor alan herkes shot atsın."
   },
   {
@@ -678,7 +678,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce işe veya okula gitmemek için hasta numarası yapan herkes shot atsın."
   },
   {
@@ -686,7 +686,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce CV’sinde bir şeyi abartan herkes shot atsın."
   },
   {
@@ -694,7 +694,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce toplantıda uyuklayan herkes shot atsın."
   },
   {
@@ -702,7 +702,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce patronu hakkında dedikodu yapan herkes shot atsın."
   },
   {
@@ -710,7 +710,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce iş arkadaşından hoşlanan herkes shot atsın."
   },
   {
@@ -718,7 +718,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce iş yerinde flört eden herkes shot atsın."
   },
   {
@@ -726,7 +726,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce iş görüşmesine geç kalan herkes shot atsın."
   },
   {
@@ -734,7 +734,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce yaptığı işi başkası yapmış gibi gösteren herkes shot atsın."
   },
   {
@@ -742,7 +742,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce arkadaşının ödevini veya işini kopyalayan herkes shot atsın."
   },
   {
@@ -750,7 +750,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce bir şeyi bilmediği hâlde biliyormuş gibi yapan herkes shot atsın."
   },
   {
@@ -758,7 +758,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce tartışmayı kazanmak için uydurma bilgi veren herkes shot atsın."
   },
   {
@@ -766,7 +766,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce Google’dan bakıp biliyormuş gibi davranan herkes shot atsın."
   },
   {
@@ -774,7 +774,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce izlememiş olduğu bir filmi izlemiş gibi yapan herkes shot atsın."
   },
   {
@@ -782,7 +782,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce okumadığı bir kitabı okumuş gibi yapan herkes shot atsın."
   },
   {
@@ -790,7 +790,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce bir diziyi gizlice ileriden izleyen herkes shot atsın."
   },
   {
@@ -798,7 +798,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Aynı diziyi üçten fazla kez izleyen herkes shot atsın."
   },
   {
@@ -806,7 +806,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Korku filmi izlerken gözünü kapatan herkes shot atsın."
   },
   {
@@ -814,7 +814,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce sinemada uyuyan herkes shot atsın."
   },
   {
@@ -822,7 +822,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce konser sırasında şarkı sözlerini yanlış söyleyen herkes shot atsın."
   },
   {
@@ -830,7 +830,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Duşta şarkı söyleyen herkes shot atsın."
   },
   {
@@ -838,7 +838,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Tek başınayken yüksek sesle kendi kendine konuşan herkes shot atsın."
   },
   {
@@ -846,7 +846,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Aynanın karşısında konuşma provası yapan herkes shot atsın."
   },
   {
@@ -854,7 +854,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Tartışma bittikten sonra vereceği cevabı sonradan bulan herkes shot atsın."
   },
   {
@@ -862,7 +862,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce hayali bir tartışmayı kafasında kazanan herkes shot atsın."
   },
   {
@@ -870,7 +870,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Burçlara inanan herkes shot atsın."
   },
   {
@@ -878,7 +878,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Burçlara inanmadığını söyleyip yine de burcunu okuyan herkes shot atsın."
   },
   {
@@ -886,7 +886,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce fal baktıran herkes shot atsın."
   },
   {
@@ -894,7 +894,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce paranormal bir olay yaşadığını düşünen herkes shot atsın."
   },
   {
@@ -902,7 +902,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Karanlıktan korkan herkes shot atsın."
   },
   {
@@ -910,7 +910,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Yükseklik korkusu olan herkes shot atsın."
   },
   {
@@ -918,7 +918,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Böceklerden korkan herkes shot atsın."
   },
   {
@@ -926,7 +926,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Kan görünce kötü olan herkes shot atsın."
   },
   {
@@ -934,7 +934,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce topluluk önünde rezil olduğunu düşünen herkes shot atsın."
   },
   {
@@ -942,7 +942,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce yanlış kişiye el sallayan herkes shot atsın."
   },
   {
@@ -950,7 +950,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce kendisine el sallanmamasına rağmen karşılık veren herkes shot atsın."
   },
   {
@@ -958,7 +958,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce cam kapıya çarpan herkes shot atsın."
   },
   {
@@ -966,7 +966,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce merdivenden düşen herkes shot atsın."
   },
   {
@@ -974,7 +974,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce herkesin içinde tökezleyen herkes shot atsın."
   },
   {
@@ -982,7 +982,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce kıyafetini ters giyen herkes shot atsın."
   },
   {
@@ -990,7 +990,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Daha önce ayakkabıları farklı giyen herkes shot atsın."
   },
   {
@@ -998,7 +998,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Çorabı delik olan herkes shot atsın."
   },
   {
@@ -1006,7 +1006,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Üzerinde beyaz renk bulunan herkes shot atsın."
   },
   {
@@ -1014,7 +1014,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Kot pantolon giyen herkes shot atsın."
   },
   {
@@ -1022,7 +1022,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Kolunda saat bulunan herkes shot atsın."
   },
   {
@@ -1030,7 +1030,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Üzerinde marka logosu bulunan herkes shot atsın."
   },
   {
@@ -1038,7 +1038,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Cebinde nakit para olmayan herkes shot atsın."
   },
   {
@@ -1046,7 +1046,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Yanında kimlik taşımayan herkes shot atsın."
   },
   {
@@ -1054,7 +1054,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu akşam en son gelen kişi shot atsın."
   },
   {
@@ -1062,7 +1062,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu akşam ilk gelen kişi shot atsın."
   },
   {
@@ -1070,7 +1070,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gruptaki en genç kişi shot atsın."
   },
   {
@@ -1078,7 +1078,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gruptaki en yaşlı kişi shot atsın."
   },
   {
@@ -1086,7 +1086,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gruptaki en uzun kişi shot atsın."
   },
   {
@@ -1094,7 +1094,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Gruptaki en kısa kişi shot atsın."
   },
   {
@@ -1102,7 +1102,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunun şarjı en düşük olan kişi shot atsın."
   },
   {
@@ -1110,7 +1110,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunda en fazla fotoğraf bulunan kişi shot atsın."
   },
   {
@@ -1118,7 +1118,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Sosyal medyada en fazla takipçisi olan kişi shot atsın."
   },
   {
@@ -1126,7 +1126,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En son doğum günü kutlayan kişi shot atsın."
   },
   {
@@ -1134,7 +1134,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Doğum günü en yakın olan kişi shot atsın."
   },
   {
@@ -1142,7 +1142,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Evinden en uzakta olan kişi shot atsın."
   },
   {
@@ -1150,7 +1150,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki insanları en kısa süredir tanıyan kişi shot atsın."
   },
   {
@@ -1158,7 +1158,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu gruptaki insanları en uzun süredir tanıyan kişi shot atsın."
   },
   {
@@ -1166,7 +1166,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bugün en geç uyanan kişi shot atsın."
   },
   {
@@ -1174,7 +1174,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Dün gece en geç uyuyan kişi shot atsın."
   },
   {
@@ -1182,7 +1182,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En son ilişkisinden çıkan kişi shot atsın."
   },
   {
@@ -1190,7 +1190,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En uzun ilişkisi olan kişi shot atsın."
   },
   {
@@ -1198,7 +1198,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En fazla eski sevgilisi olan kişi shot atsın."
   },
   {
@@ -1206,7 +1206,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En son mesaj gönderen kişi shot atsın."
   },
   {
@@ -1214,7 +1214,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "En son telefon görüşmesi yapan kişi shot atsın."
   },
   {
@@ -1222,15 +1222,15 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Galerisindeki son fotoğrafı göstermeyi reddeden kişi shot atsın."
   },
   {
     "id": 1154,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son aramasını göstermeyi reddeden kişi shot atsın."
   },
   {
@@ -1238,7 +1238,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunu masaya ekranı aşağı bakacak şekilde koyan herkes shot atsın."
   },
   {
@@ -1246,7 +1246,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunun duvar kâğıdında kendi fotoğrafı bulunan herkes shot atsın."
   },
   {
@@ -1254,87 +1254,87 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Telefonunun duvar kâğıdında sevgilisi bulunan herkes shot atsın."
   },
   {
     "id": 1158,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, gruptan bir kişiyi seçsin. Seçilen kişi shot atsın."
   },
   {
     "id": 1159,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, kendisine en az benzeyen kişiyi seçsin. İkisi birlikte shot atsın."
   },
   {
     "id": 1160,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, en güvendiği kişiyi seçsin. Diğer herkes shot atsın."
   },
   {
     "id": 1161,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, gruptaki en komik kişiyi seçsin. Seçilen kişi birini shot atmak üzere seçsin."
   },
   {
     "id": 1162,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, bu grupta ilk tanıştığı kişiyi seçsin. İkisi birlikte shot atsın."
   },
   {
     "id": 1163,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, kendisi hakkında en fazla şey bilen kişiyi seçsin. Seçilen kişi shot atsın."
   },
   {
     "id": 1164,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, telefonunu bir dakikalığına emanet edebileceği kişiyi seçsin. Seçilmeyenler shot atsın."
   },
   {
     "id": 1165,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, aynı eve çıkabileceği kişiyi seçsin. Diğer herkes shot atsın."
   },
   {
     "id": 1166,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, birlikte tatile çıkmak istediği kişiyi seçsin. İkisi birlikte shot atsın."
   },
   {
     "id": 1167,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, bir sırrını paylaşabileceği kişiyi seçsin. Seçilen kişi bir oyuncuyu shot atmak üzere seçsin."
   },
   {
@@ -1773,210 +1773,210 @@ export const importedCards: Card[] = [
   },
   {
     "id": 1213,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca isim söylemek yasak. İsim söyleyen shot atsın."
   },
   {
     "id": 1214,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca “evet” demek yasak. “Evet” diyen shot atsın."
   },
   {
     "id": 1215,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca “hayır” demek yasak. “Hayır” diyen shot atsın."
   },
   {
     "id": 1216,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca telefona bakmak yasak. Telefonuna bakan shot atsın."
   },
   {
     "id": 1217,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca küfür etmek yasak. Küfür eden shot atsın."
   },
   {
     "id": 1218,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca kartı açan kişiye bakmak yasak. Bakan shot atsın."
   },
   {
     "id": 1219,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca herkes birbirine soyadıyla hitap etsin. Unutan shot atsın."
   },
   {
     "id": 1220,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca soru soran kişi shot atsın."
   },
   {
     "id": 1221,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca gülen kişi shot atsın."
   },
   {
     "id": 1222,
-    "kind": "rule",
-    "category": "Kalıcı Kural",
-    "icon": "§",
-    "tag": "3 TUR",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Önümüzdeki üç tur boyunca herkes konuşmadan önce elini kaldırsın. Unutan shot atsın."
   },
   {
     "id": 1223,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son üç turda hiç shot atmayan herkes shot atsın."
   },
   {
     "id": 1224,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son iki turda shot atan herkes tekrar shot atsın."
   },
   {
     "id": 1225,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Oyunda henüz hiç oy almayan herkes shot atsın."
   },
   {
     "id": 1226,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Oyunda en fazla oy alan kişi shot atsın."
   },
   {
     "id": 1227,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Oyunda en az oy alan kişi bir oyuncuyu shot atmak üzere seçsin."
   },
   {
     "id": 1228,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Oyunda en fazla shot atan oyuncu bu tur muaftır. Diğer herkes shot atsın."
   },
   {
     "id": 1229,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Oyunda en az shot atan oyuncu shot atsın."
   },
   {
     "id": 1230,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son oylamada aynı kişiye oy veren herkes shot atsın."
   },
   {
     "id": 1231,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Birbirine en fazla oy veren iki oyuncu birlikte shot atsın."
   },
   {
     "id": 1232,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son üç turda hiç hedef seçilmeyen oyuncu bir kişiyi shot atmak üzere seçsin."
   },
   {
     "id": 1233,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son düelloyu kaybeden oyuncu bir rakip seçsin. İkisi yeniden düello yapsın."
   },
   {
     "id": 1234,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "En uzun süredir shot atmayan oyuncu bu turdan muaftır. Diğer herkes shot atsın."
   },
   {
     "id": 1235,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Bu oyunda ilk shot atan oyuncu bir kişiyi shot atmak üzere seçsin."
   },
   {
     "id": 1236,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Bu oyunda en fazla kart açan oyuncu shot atsın."
   },
   {
     "id": 1237,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Arka arkaya iki tur shot atan oyuncular bu turdan muaftır."
   },
   {
     "id": 1238,
-    "kind": "dynamic",
-    "category": "Dinamik",
-    "icon": "↗",
-    "tag": "OYUN GEÇMİŞİ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Son kartta shot atan oyuncular, aralarından bir kişiyi shot atmak üzere seçsin."
   },
   {
@@ -2001,34 +2001,34 @@ export const importedCards: Card[] = [
   },
   {
     "id": 1241,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu, bir sonraki kartı kimin açacağını seçsin."
   },
   {
     "id": 1242,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu bu kartı başka bir oyuncuya devredebilir."
   },
   {
     "id": 1243,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu bu turdan muaftır ve bir kişiyi shot atmak üzere seçer."
   },
   {
     "id": 1244,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu iki kişiyi seçsin. Seçilen kişilerden biri diğerini shot atmaktan kurtarsın."
   },
   {
@@ -2056,7 +2056,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Herkes, sağındaki oyuncunun shot atıp atmayacağına karar versin. Çoğunluk kararı uygulanır."
   },
   {
@@ -2081,10 +2081,10 @@ export const importedCards: Card[] = [
   },
   {
     "id": 1250,
-    "kind": "target",
-    "category": "Hedef",
-    "icon": "⌖",
-    "tag": "HEDEF SEÇ",
+    "kind": "condition",
+    "category": "Koşul",
+    "icon": "◎",
+    "tag": "UYGULA",
     "text": "Kartı açan oyuncu bir kişiyi seçsin. Seçilen kişi bu turda kendisi yerine başka bir oyuncuyu shot atmak üzere seçebilir."
   },
   {
@@ -2092,7 +2092,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu kartta shot atması gereken herkes pas hakkını kullanabilir. Pas kullanan oyuncu bir sonraki oylamada oy kullanamaz."
   },
   {
@@ -2100,7 +2100,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Bu turda kimse shot atmaz. Kartı açan oyuncu bir sonraki karta geçer."
   },
   {
@@ -2108,7 +2108,7 @@ export const importedCards: Card[] = [
     "kind": "condition",
     "category": "Koşul",
     "icon": "◎",
-    "tag": "HERKES",
+    "tag": "UYGULA",
     "text": "Herkes bu turdan muaftır. Ancak bir sonraki kartta shot atacak kişiler iki kat hedef sayılır."
   }
 ];

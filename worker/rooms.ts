@@ -6,7 +6,7 @@ export interface Env {
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
 type GameCard = { id?: number; kind?: string; maxSelections?: number; outcome?: string; [key: string]: unknown };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: GameCard | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; deck: GameCard[]; currentPlayer: number; card: GameCard | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -31,13 +31,13 @@ export default {
 };
 
 export class GameRoom extends DurableObject<Env> {
-  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, currentPlayer: 0, card: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
+  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, deck: [], currentPlayer: 0, card: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
       const stored = await ctx.storage.get<RoomState>("state");
-      this.state = { ...this.state, ...(stored ?? {}), responses: stored?.responses ?? {}, votes: stored?.votes ?? {} };
+      this.state = { ...this.state, ...(stored ?? {}), deck: stored?.deck ?? [], responses: stored?.responses ?? {}, votes: stored?.votes ?? {} };
       for (const ws of ctx.getWebSockets()) {
         const meta = ws.deserializeAttachment() as { playerId?: string } | null;
         if (meta?.playerId) this.setConnected(meta.playerId, true);
@@ -75,17 +75,23 @@ export class GameRoom extends DurableObject<Env> {
       const msg = JSON.parse(typeof raw === "string" ? raw : new TextDecoder().decode(raw));
       this.ensureHost();
       const isHost = this.state.hostId === playerId;
-      if (msg.type === "start" && isHost) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0 });
+      if (msg.type === "configure" && isHost && this.state.phase === "lobby") this.state.totalCards = Math.max(10, Math.min(100, Number(msg.totalCards ?? 30)));
+      if (msg.type === "start" && isHost && this.state.phase === "lobby" && Array.isArray(msg.deck)) {
+        const deck = msg.deck.slice(0, this.state.totalCards);
+        if (deck.length >= 10) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0, deck, card: deck[0], responses: {}, votes: {}, confirmed: false });
+      }
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
       if (msg.type === "card" && isHost) this.state.card = msg.card;
       if (msg.type === "answer" && this.state.phase === "playing" && !this.state.confirmed) this.state.responses[playerId] = Boolean(msg.drank);
       if (msg.type === "vote" && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
-        const max = Math.max(1, Math.min(2, Number(this.state.card.maxSelections ?? 1)));
+        const max = Math.max(1, Math.min(2, this.state.players.length - 1, Number(this.state.card.maxSelections ?? 1)));
         const validIds = new Set(this.state.players.filter((p) => p.id !== playerId).map((p) => p.id));
         const selections = [...new Set(Array.isArray(msg.selections) ? msg.selections : [])].filter((id) => validIds.has(id)).slice(0, max);
         if (selections.length === max) this.state.votes[playerId] = selections;
       }
-      if (msg.type === "revealVotes" && isHost && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
+      const connectedIds = this.state.players.filter((p) => p.connected).map((p) => p.id);
+      const everyoneVoted = connectedIds.every((id) => id in this.state.votes);
+      if (msg.type === "revealVotes" && isHost && everyoneVoted && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
         const tally: Record<string, number> = {};
         Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
         const counts = this.state.players.map((p) => tally[p.id] ?? 0);
@@ -101,15 +107,20 @@ export class GameRoom extends DurableObject<Env> {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (appliesShot && this.state.voteWinners.includes(p.id) ? 1 : 0) }));
         this.state.voteRevealed = true; this.state.confirmed = true;
       }
-      if (msg.type === "confirm" && isHost && !this.state.confirmed && this.state.card?.kind !== "vote") {
+      const activeIds = this.state.players.filter((p) => p.connected).map((p) => p.id);
+      const everyoneAnswered = activeIds.every((id) => id in this.state.responses);
+      if (msg.type === "confirm" && isHost && everyoneAnswered && !this.state.confirmed && this.state.card?.kind !== "vote") {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.responses[p.id] ? 1 : 0) }));
         this.state.confirmed = true;
       }
       if (msg.type === "shots" && isHost) {
         this.state.players = this.state.players.map((p) => ({ ...p, shots: Math.max(0, Number(msg.shots?.[p.id] ?? p.shots)) }));
       }
-      if (msg.type === "next" && isHost && this.state.players.length) {
-        this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.confirmed = false;
+      if (msg.type === "next" && isHost && this.state.players.length && this.state.confirmed) {
+        if (this.state.round >= this.state.totalCards) this.state.phase = "finished";
+        else {
+          this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = this.state.deck[this.state.round - 1] ?? null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.confirmed = false;
+        }
       }
       if (msg.type === "transfer" && isHost && this.state.players.some((p) => p.id === msg.playerId)) this.state.hostId = msg.playerId;
       if (msg.type === "kick" && isHost && msg.playerId !== playerId) this.state.players = this.state.players.filter((p) => p.id !== msg.playerId);
@@ -141,7 +152,7 @@ export class GameRoom extends DurableObject<Env> {
   private publicState(viewerId?: string) {
     const tally: Record<string, number> = {};
     if (this.state.voteRevealed) Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
-    const { votes: _secretVotes, ...safe } = this.state;
+    const { votes: _secretVotes, deck: _secretDeck, ...safe } = this.state;
     return { ...safe, playerCount: this.state.players.length, votedPlayerIds: Object.keys(this.state.votes), myVote: viewerId ? this.state.votes[viewerId] ?? [] : [], voteTally: tally };
   }
   private async saveAndBroadcast() {

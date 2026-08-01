@@ -8,9 +8,6 @@ function kindOf(text) {
   const lower = text.toLocaleLowerCase("tr-TR");
   if (/gizli oy|gizlice bir kişiye oy|gözlerini kapatsın|aynı anda bir oyuncuyu işaret|hakkında gizli oy/.test(lower)) return "vote";
   if (/kartı açan oyuncu bir rakip seçsin/.test(lower)) return "duel";
-  if (/önümüzdeki üç tur/.test(lower)) return "rule";
-  if (/^(son |oyunda |bu oyunda |birbirine |en uzun süredir |arka arkaya )/.test(lower)) return "dynamic";
-  if (/^kartı açan oyuncu/.test(lower)) return "target";
   return "condition";
 }
 
@@ -25,8 +22,7 @@ function outcomeOf(text) {
 }
 
 const meta = {
-  condition: ["Koşul", "◎", "HERKES"], vote: ["Oylama", "✦", "GİZLİ OY"], target: ["Hedef", "⌖", "HEDEF SEÇ"],
-  duel: ["Düello", "⚔", "2 OYUNCU"], rule: ["Kalıcı Kural", "§", "3 TUR"], dynamic: ["Dinamik", "↗", "OYUN GEÇMİŞİ"],
+  condition: ["Koşul", "◎", "UYGULA"], vote: ["Oylama", "✦", "GİZLİ OY"], duel: ["Düello", "⚔", "2 OYUNCU"],
 };
 const seen = new Set();
 const cards = lines.filter((text) => { const key = text.toLocaleLowerCase("tr-TR").replace(/[.!?]+$/, ""); if (seen.has(key)) return false; seen.add(key); return true; }).map((text, index) => {
