@@ -5,7 +5,7 @@ export interface Env {
 }
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
-type GameCard = { id?: number; kind?: string; maxSelections?: number; [key: string]: unknown };
+type GameCard = { id?: number; kind?: string; maxSelections?: number; outcome?: string; [key: string]: unknown };
 type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; currentPlayer: number; card: GameCard | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 
 const cors = {
@@ -86,9 +86,17 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.type === "revealVotes" && isHost && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
         const tally: Record<string, number> = {};
         Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
-        const top = Math.max(0, ...Object.values(tally));
-        this.state.voteWinners = top ? Object.keys(tally).filter((id) => tally[id] === top) : [];
-        this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.voteWinners.includes(p.id) ? 1 : 0) }));
+        const counts = this.state.players.map((p) => tally[p.id] ?? 0);
+        const top = Math.max(0, ...counts); const bottom = Math.min(...counts);
+        const topIds = this.state.players.filter((p) => (tally[p.id] ?? 0) === top).map((p) => p.id);
+        const outcome = this.state.card.outcome ?? "highest";
+        if (outcome === "lowest") this.state.voteWinners = this.state.players.filter((p) => (tally[p.id] ?? 0) === bottom).map((p) => p.id);
+        else if (outcome === "zero") this.state.voteWinners = this.state.players.filter((p) => !tally[p.id]).map((p) => p.id);
+        else if (outcome === "except_top") this.state.voteWinners = this.state.players.filter((p) => !topIds.includes(p.id)).map((p) => p.id);
+        else if (outcome === "tie_all") this.state.voteWinners = new Set(counts).size === 1 ? this.state.players.map((p) => p.id) : [];
+        else this.state.voteWinners = top ? topIds : [];
+        const appliesShot = outcome !== "winner_chooses";
+        this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (appliesShot && this.state.voteWinners.includes(p.id) ? 1 : 0) }));
         this.state.voteRevealed = true; this.state.confirmed = true;
       }
       if (msg.type === "confirm" && isHost && !this.state.confirmed && this.state.card?.kind !== "vote") {

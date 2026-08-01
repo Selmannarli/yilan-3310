@@ -1,5 +1,8 @@
 export type CardKind = "condition" | "vote" | "target" | "duel" | "mission" | "rule" | "dynamic";
-export type Card = { id: number; kind: CardKind; category: string; icon: string; text: string; tag: string; maxSelections?: number };
+import { importedCards } from "./generatedCards";
+
+export type VoteOutcome = "highest" | "lowest" | "zero" | "tie_all" | "except_top" | "winner_chooses";
+export type Card = { id: number; kind: CardKind; category: string; icon: string; text: string; tag: string; maxSelections?: number; outcome?: VoteOutcome };
 
 export const categoryMeta: Record<CardKind, { label: string; color: string; icon: string }> = {
   condition: { label: "Koşul", color: "#c9ff37", icon: "◎" },
@@ -11,7 +14,7 @@ export const categoryMeta: Record<CardKind, { label: string; color: string; icon
   dynamic: { label: "Dinamik", color: "#ff78b7", icon: "↗" },
 };
 
-export const cards: Card[] = [
+const originalCards: Card[] = [
   { id: 1, kind: "condition", category: "Koşul", icon: "◎", tag: "HERKES", text: "Bu gruptaki herkesi bir yıldan uzun süredir tanıyanlar shot atsın." },
   { id: 2, kind: "condition", category: "Koşul", icon: "◎", tag: "HERKES", text: "Son bir yıl içinde iş değiştiren herkes shot atsın." },
   { id: 3, kind: "condition", category: "Koşul", icon: "◎", tag: "HERKES", text: "Telefonunda eski sevgilisinin fotoğrafı bulunan herkes shot atsın." },
@@ -43,3 +46,7 @@ export const cards: Card[] = [
   { id: 29, kind: "dynamic", category: "Dinamik", icon: "↗", tag: "OYUN GEÇMİŞİ", text: "En uzun süredir shot atmayan oyuncu bu turdan muaftır." },
   { id: 30, kind: "dynamic", category: "Dinamik", icon: "↗", tag: "OYUN GEÇMİŞİ", text: "Bu oyunda en fazla oy alan kişi bir rakip seçsin; ikisi düello yapsın." },
 ];
+
+const normalized = (text: string) => text.toLocaleLowerCase("tr-TR").replace(/[.!?]+$/, "");
+const importedTexts = new Set(importedCards.map((card) => normalized(card.text)));
+export const cards: Card[] = [...originalCards.filter((card) => !importedTexts.has(normalized(card.text))), ...importedCards];
