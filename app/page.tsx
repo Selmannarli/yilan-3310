@@ -12,13 +12,14 @@ const randomItem = <T,>(items: T[]) => items[Math.floor(Math.random() * items.le
 const randomNickname = () => `${randomItem(nicknameAdjectives)} ${randomItem(nicknameAnimals)}`;
 type Player = { id: string; nickname: string; avatar: string; shots: number; connected: boolean };
 type MiniGameState = { game: string; phase: "selecting"|"ready"|"playing"|"result"; challengerId: string; opponentId: string|null; readyIds: string[]; startedAt: number|null; triggerAt: number|null; endsAt: number|null; challenge: { sequence?: string[]; options?: string[][]; correctIndex?: number; targetIndex?: number; normal?: string; odd?: string }; submittedIds: string[]; winners: string[]; losers: string[]; details: Record<string, Record<string, number|string>> };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; activeCategories: string[]; currentPlayer: number; card: Card | null; revealedBy: string | null; miniGame: MiniGameState|null; responses: Record<string, boolean>; votedPlayerIds: string[]; myVote: string[]; voteTally: Record<string, number>; voteRevealed: boolean; voteWinners: string[]; turnResult: { drinkers: string[]; nonDrinkers: string[] } | null; confirmed: boolean };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; passLimit: number; passes: Record<string, number>; activeCategories: string[]; currentPlayer: number; card: Card | null; revealedBy: string | null; miniGame: MiniGameState|null; responses: Record<string, boolean>; votedPlayerIds: string[]; myVote: string[]; voteTally: Record<string, number>; voteRevealed: boolean; voteWinners: string[]; turnResult: { drinkers: string[]; nonDrinkers: string[] } | null; confirmed: boolean };
 const initials = (name: string) => name.trim().slice(0, 2).toLocaleUpperCase("tr-TR");
 function PlayerAvatar({ player, index = 0, small = false }: { player?: Player; index?: number; small?: boolean }) { return <span className={`${small ? "mini-avatar" : "avatar"} ${colors[index%colors.length]}`}>{player?.avatar || initials(player?.nickname ?? "")}</span>; }
 
-function TurnResult({ result, players }: { result: NonNullable<RoomState["turnResult"]>; players: Player[] }) {
+function TurnResult({ result, players, miniGame }: { result: NonNullable<RoomState["turnResult"]>; players: Player[]; miniGame?: MiniGameState | null }) {
   const group = (ids: string[]) => ids.map((id) => players.find((p) => p.id === id)).filter(Boolean) as Player[];
-  return <section className="turn-result"><div className="result-heading"><small>TUR TAMAMLANDI</small><h2>Herkes yerini alsın</h2></div><div className="result-sides"><div className="drinker-side"><span>🥃 İÇENLER</span>{group(result.drinkers).map((p,i)=><div key={p.id}><PlayerAvatar player={p} index={i}/><b>{p.nickname}</b></div>)}{!result.drinkers.length&&<p>Bu tur kimse içmedi.</p>}</div><div className="safe-side"><span>✨ İÇMEYENLER</span>{group(result.nonDrinkers).map((p,i)=><div key={p.id}><PlayerAvatar player={p} index={i+2}/><b>{p.nickname}</b></div>)}{!result.nonDrinkers.length&&<p>Bu tarafta kimse yok.</p>}</div></div></section>;
+  const fiveSecondTimes = miniGame?.game === "five_seconds" ? (miniGame.details.times ?? {}) as Record<string, number> : null;
+  return <section className="turn-result"><div className="result-heading"><small>TUR TAMAMLANDI</small><h2>Herkes yerini alsın</h2></div>{fiveSecondTimes&&<div className="five-second-results"><span>⏱ SÜRELER</span>{Object.entries(fiveSecondTimes).map(([id,value],i)=>{const player=players.find((p)=>p.id===id);return <div key={id}><PlayerAvatar player={player} index={i}/><b>{player?.nickname??"Oyuncu"}</b><strong>{(Number(value)/1000).toFixed(2)} sn <small>· {(Math.abs(5000-Number(value))/1000).toFixed(2)} sn fark</small></strong></div>})}</div>}<div className="result-sides"><div className="drinker-side"><span>🥃 İÇENLER</span>{group(result.drinkers).map((p,i)=><div key={p.id}><PlayerAvatar player={p} index={i}/><b>{p.nickname}</b></div>)}{!result.drinkers.length&&<p>Bu tur kimse içmedi.</p>}</div><div className="safe-side"><span>✨ İÇMEYENLER</span>{group(result.nonDrinkers).map((p,i)=><div key={p.id}><PlayerAvatar player={p} index={i+2}/><b>{p.nickname}</b></div>)}{!result.nonDrinkers.length&&<p>Bu tarafta kimse yok.</p>}</div></div></section>;
 }
 
 function MiniGamePanel({ game, playerId, players, send }: { game: MiniGameState; playerId: string; players: Player[]; send: (message: object) => void }) {
@@ -50,7 +51,6 @@ export default function Home() {
   const [room, setRoom] = useState<RoomState | null>(null);
   const [connection, setConnection] = useState<"idle" | "connecting" | "online" | "error">("idle");
   const [error, setError] = useState("");
-  const [passes, setPasses] = useState(2);
   const [voteDraft, setVoteDraft] = useState<string[]>([]);
   const [countdown, setCountdown] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -74,6 +74,7 @@ export default function Home() {
   useEffect(() => { localStorage.setItem("shot-vibration", vibrationOn ? "on" : "off"); }, [vibrationOn]);
 
   const me = room?.players.find((p) => p.id === playerId);
+  const myPasses = room?.passes?.[playerId] ?? room?.passLimit ?? 0;
   const isHost = room?.hostId === playerId;
   const answer = room && playerId in room.responses ? (room.responses[playerId] ? "drank" : "no") : null;
   const responseCount = Object.keys(room?.responses ?? {}).length;
@@ -147,7 +148,7 @@ export default function Home() {
     send({ type: "start", deck });
   }
   function nextCard() { setVoteDraft([]); send({ type: "next" }); }
-  function passCard() { if (!isHost || passes < 1) return; setPasses((p) => p - 1); setVoteDraft([]); send({ type: "skip" }); }
+  function passCard() { if (!isMyTurn || myPasses < 1 || room?.confirmed) return; setVoteDraft([]); send({ type: "skip" }); }
   function leave() { socket.current?.close(); setRoom(null); setRoomCode(""); setPlayerId(""); setConnection("idle"); setSettingsOpen(false); history.replaceState({}, "", location.pathname); }
   async function copyRoom() { await navigator.clipboard?.writeText(shareUrl); setCopied(true); window.setTimeout(()=>setCopied(false),1600); }
   function toggleCategory(kind: string) {
@@ -184,14 +185,14 @@ export default function Home() {
       ) : room.phase === "lobby" ? (
         <section className="lobby">
           <div className="eyebrow">ODA HAZIR · CANLI</div><h1>Arkadaşlarını çağır,<br/><em>ayarları seç.</em></h1>
-          <p>Katılmak için bu oda kodunu paylaş. Oda yalnızca sen oluşturduğun için kullanılabilir.</p>
+          <p>Oda kodunu arkadaşlarınla paylaş. Herkes hazır olduğunda oyunu başlat.</p>
           <div className="join-card"><div className="fake-qr" aria-label="Oda bağlantısı"><span>SHOT!</span></div><div><small>ODA KODU</small><strong>{roomCode.slice(0,3)} {roomCode.slice(3)}</strong><button onClick={copyRoom}>{copied?"✓ Bağlantı kopyalandı":"Bağlantıyı kopyala"}</button></div></div>
           <div className="lobby-head"><b>OYUNCULAR · {orderedPlayers.length}</b><span>CANLI BAĞLANTI</span></div>
           <div className="lobby-players">{orderedPlayers.map((p,i) => <div key={p.id}><PlayerAvatar player={p} index={i}/><b>{p.nickname}{p.id === room.hostId && <small> YÖNETİCİ</small>}</b><i className={p.connected ? "" : "away"}>{p.connected ? "✓" : "○"}</i></div>)}</div>
           <div className="card-count-picker"><div><small>OYUN UZUNLUĞU</small><strong>{room.totalCards} kart</strong></div><div>{[15,30,50,75].map((count)=><button key={count} disabled={!isHost} className={room.totalCards===count?"active":""} onClick={()=>send({type:"configure",totalCards:count})}>{count}</button>)}</div><p>{room.totalCards<=15?"Hızlı · yaklaşık 20 dakika":room.totalCards<=30?"Standart · yaklaşık 45 dakika":room.totalCards<=50?"Uzun · yaklaşık 75 dakika":"Maraton · 2 saate kadar"}</p></div>
+          <div className="pass-count-picker"><div><small>KİŞİ BAŞI PAS HAKKI</small><strong>{room.passLimit} hak</strong></div><div>{[1,2].map((count)=><button key={count} disabled={!isHost} className={room.passLimit===count?"active":""} onClick={()=>send({type:"configurePasses",passLimit:count})}>{count}</button>)}</div><p>Her oyuncu, sırası kendisindeyken istemediği kartı değiştirebilir.</p></div>
           <div className="category-filter-head"><div><small>KART KATEGORİLERİ</small><strong>{availableCardCount} farklı kart</strong></div><span>{isHost?"İstediklerini aç veya kapat":"Oda yöneticisi seçiyor"}</span></div>
           <div className="category-filter">{Object.entries(categoryMeta).map(([key,meta])=>{const active=activeCategories.includes(key);return <button key={key} disabled={!isHost} className={active?"active":""} onClick={()=>toggleCategory(key)} style={{"--cat":meta.color} as React.CSSProperties}><i>{meta.icon}</i><span><b>{meta.label}</b><small>{cards.filter(c=>c.kind===key).length} kart</small></span><em>{active?"✓":"+"}</em></button>})}</div>
-          {availableCardCount<room.totalCards&&<p className="deck-warning">Tüm {availableCardCount} kart görüldükten sonra deste yeniden karıştırılacak. Oyun yine {room.totalCards} tur sürecek.</p>}
           {isHost ? <button className="start-button" onClick={startGame} disabled={orderedPlayers.length < 2}>{orderedPlayers.length < 2 ? "En az 2 oyuncu gerekli" : "Oyunu başlat"} <span>→</span></button> : <div className="waiting-host">Oda yöneticisi oyunu başlatacak <span className="dots"><i/><i/><i/></span></div>}
         </section>
       ) : room.phase === "finished" ? (
@@ -203,8 +204,8 @@ export default function Home() {
             <div className="round-progress"><i style={{width:`${Math.min(100,(room.round/room.totalCards)*100)}%`}}/><span>{room.totalCards-room.round} tur kaldı</span></div>
             {!room.card ? <div className={`closed-card-wrap ${isMyTurn ? "your-turn" : ""}`}><div className="closed-card"><span className="closed-logo">S!</span><i>SHOT!</i><small>KART #{String(room.round).padStart(2,"0")}</small></div>{isMyTurn ? <><p>Sıra sende. Hazır olduğunda kartını aç.</p><button className="reveal-button" onClick={()=>send({type:"revealCard"})}>KARTI AÇ <span>✦</span></button></> : <div className="waiting-reveal"><span className="dots"><i/><i/><i/></span><p><strong>{current?.nickname}</strong> kartını açacak</p></div>}</div> : <>
             <div className={`card-stack ${room.revealedBy===playerId?"opener-highlight":""}`} style={{"--accent":accent} as React.CSSProperties}><div className="back-card one"/><div className="back-card two"/><article className={`game-card category-${card.kind} ${room.confirmed ? "confirmed" : ""}`}><div className="card-top"><span>{card.category}</span><span className="card-icon">{card.icon}</span></div><div className="card-copy"><div className="quote">“</div><h1>{card.text}</h1><p>{isVote ? "Oylar gizli tutulur · Kendine oy veremezsin" : "Cevabını dürüstçe seç."}</p></div><div className="card-bottom"><span>#{String(card.id).padStart(3,"0")}</span><b>{room.confirmed ? "Tur tamamlandı" : card.tag}</b></div></article></div>
-            <div className="pass-row"><span>Bu kart gruba uymadı mı?</span><button disabled={!isHost || passes===0} onClick={passCard}>↷ Kartı geç <b>{passes}</b></button></div>
-            {room.confirmed&&room.turnResult ? <TurnResult result={room.turnResult} players={orderedPlayers}/> : isDigital&&room.miniGame ? <MiniGamePanel game={room.miniGame} playerId={playerId} players={orderedPlayers} send={send}/> : isVote ? (
+            <div className="pass-row"><span>{isMyTurn?"Kartı değiştirmek ister misin?":`${current?.nickname} isterse kartı değiştirebilir.`}</span><button disabled={!isMyTurn || myPasses===0 || room.confirmed} onClick={passCard}>↷ Pas <b>{isMyTurn?myPasses:"—"}</b></button></div>
+            {room.confirmed&&room.turnResult ? <TurnResult result={room.turnResult} players={orderedPlayers} miniGame={room.miniGame}/> : isDigital&&room.miniGame ? <MiniGamePanel game={room.miniGame} playerId={playerId} players={orderedPlayers} send={send}/> : isVote ? (
               <section className="response-panel vote-panel">
                 <div className="response-title"><div><small>GİZLİ OYLAMA</small><h2>{room.voteRevealed ? "Sonuçlar açıklandı" : `${maxSelections} kişi seç`}</h2></div><span>{room.votedPlayerIds?.length??0}/{orderedPlayers.filter(p=>p.connected).length} OY</span></div>
                 {room.voteRevealed ? <div className="vote-results">{orderedPlayers.slice().sort((a,b)=>(room.voteTally[b.id]??0)-(room.voteTally[a.id]??0)).map((p,i)=>{const n=room.voteTally[p.id]??0;const winner=room.voteWinners.includes(p.id);return <div key={p.id} className={winner?"winner":""}><PlayerAvatar player={p} index={orderedPlayers.indexOf(p)}/><p><b>{p.nickname}</b><i><em style={{width:`${Math.max(6,n/Math.max(1,...Object.values(room.voteTally))*100)}%`}}/></i></p><strong>{n}<small> OY</small></strong>{winner&&<label>{card.outcome==="winner_chooses"?"SEÇİM HAKKI":"+1 SHOT"}</label>}</div>})}</div> : <><div className="vote-grid">{orderedPlayers.filter(p=>p.id!==playerId).map((p,i)=>{const locked=Boolean(room.myVote?.length);const selected=(locked?room.myVote:voteDraft).includes(p.id);return <button key={p.id} className={selected?"selected":""} disabled={locked} onClick={()=>toggleVote(p.id)}><PlayerAvatar player={p} index={i+1}/><b>{p.nickname}</b><i>{selected?"✓":"+"}</i></button>})}</div><button className="submit-vote" disabled={Boolean(room.myVote?.length)||voteDraft.length!==maxSelections} onClick={submitVote}>{room.myVote?.length?"Oyun kaydedildi ✓":`Oyunu gönder · ${voteDraft.length}/${maxSelections}`}</button></>}
