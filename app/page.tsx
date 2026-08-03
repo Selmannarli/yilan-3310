@@ -6,7 +6,7 @@ import { cards, categoryMeta, type Card } from "./cards";
 const API = "https://shot-room-server.selman-narli.workers.dev";
 const colors = ["lime", "purple", "orange", "pink"];
 type Player = { id: string; nickname: string; shots: number; connected: boolean };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; currentPlayer: number; card: Card | null; revealedBy: string | null; responses: Record<string, boolean>; votedPlayerIds: string[]; myVote: string[]; voteTally: Record<string, number>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; activeCategories: string[]; currentPlayer: number; card: Card | null; revealedBy: string | null; responses: Record<string, boolean>; votedPlayerIds: string[]; myVote: string[]; voteTally: Record<string, number>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 const initials = (name: string) => name.trim().slice(0, 2).toLocaleUpperCase("tr-TR");
 
 export default function Home() {
@@ -43,6 +43,8 @@ export default function Home() {
   const maxSelections = Math.min(card.maxSelections ?? 1, Math.max(1, (room?.players.length ?? 2) - 1));
   const allVotesIn = Boolean(room && isVote && room.players.filter((p) => p.connected).every((p) => room.votedPlayerIds?.includes(p.id)));
   const accent = categoryMeta[card.kind]?.color ?? "#a855f7";
+  const activeCategories = room?.activeCategories ?? Object.keys(categoryMeta);
+  const availableCardCount = cards.filter((item) => activeCategories.includes(item.kind)).length;
   const shareUrl = typeof window === "undefined" ? "" : `${location.origin}?room=${roomCode}`;
 
   function send(message: object) { if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message)); }
@@ -84,13 +86,18 @@ export default function Home() {
   }
 
   function startGame() {
-    const shuffled = [...cards];
+    const shuffled = cards.filter((item) => activeCategories.includes(item.kind));
     for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
     send({ type: "start", deck: shuffled.slice(0, room?.totalCards ?? 30) });
   }
   function nextCard() { setVoteDraft([]); send({ type: "next" }); }
   function passCard() { if (!isHost || passes < 1) return; setPasses((p) => p - 1); nextCard(); }
   function leave() { socket.current?.close(); setRoom(null); setRoomCode(""); setPlayerId(""); setConnection("idle"); }
+  function toggleCategory(kind: string) {
+    if (!isHost) return;
+    const next = activeCategories.includes(kind) ? activeCategories.filter((item) => item !== kind) : [...activeCategories, kind];
+    if (next.length) send({ type: "configureCategories", categories: next });
+  }
   function toggleVote(id: string) {
     if (room?.myVote?.length || room?.voteRevealed || id === playerId) return;
     setVoteDraft((old) => old.includes(id) ? old.filter((x) => x !== id) : old.length < maxSelections ? [...old, id] : maxSelections === 1 ? [id] : old);
@@ -125,8 +132,9 @@ export default function Home() {
           <div className="lobby-head"><b>OYUNCULAR · {orderedPlayers.length}</b><span>CANLI BAĞLANTI</span></div>
           <div className="lobby-players">{orderedPlayers.map((p,i) => <div key={p.id}><span className={`avatar ${colors[i%4]}`}>{initials(p.nickname)}</span><b>{p.nickname}{p.id === room.hostId && <small> HOST</small>}</b><i className={p.connected ? "" : "away"}>{p.connected ? "✓" : "○"}</i></div>)}</div>
           <div className="card-count-picker"><div><small>OYUN UZUNLUĞU</small><strong>{room.totalCards} kart</strong></div><div>{[15,30,50,75].map((count)=><button key={count} disabled={!isHost} className={room.totalCards===count?"active":""} onClick={()=>send({type:"configure",totalCards:count})}>{count}</button>)}</div><p>{room.totalCards<=15?"Hızlı · yaklaşık 20 dakika":room.totalCards<=30?"Standart · yaklaşık 45 dakika":room.totalCards<=50?"Uzun · yaklaşık 75 dakika":"Maraton · 2 saate kadar"}</p></div>
-          <div className="deck-summary"><strong>{cards.length}</strong><span>BENZERSİZ KART</span><i/>Her tur farklı bir kategori</div>
-          <div className="category-legend">{Object.entries(categoryMeta).map(([key,meta])=><span key={key} style={{"--cat":meta.color} as React.CSSProperties}><i>{meta.icon}</i>{meta.label}<b>{cards.filter(c=>c.kind===key).length}</b></span>)}</div>
+          <div className="category-filter-head"><div><small>KART KATEGORİLERİ</small><strong>{availableCardCount} kart aktif</strong></div><span>{isHost?"İstediklerini aç veya kapat":"Host seçiyor"}</span></div>
+          <div className="category-filter">{Object.entries(categoryMeta).map(([key,meta])=>{const active=activeCategories.includes(key);return <button key={key} disabled={!isHost} className={active?"active":""} onClick={()=>toggleCategory(key)} style={{"--cat":meta.color} as React.CSSProperties}><i>{meta.icon}</i><span><b>{meta.label}</b><small>{cards.filter(c=>c.kind===key).length} kart</small></span><em>{active?"✓":"+"}</em></button>})}</div>
+          {availableCardCount<room.totalCards&&<p className="deck-warning">Seçilen kategorilerde {availableCardCount} kart var; oyun {availableCardCount} kart sürecek.</p>}
           {isHost ? <button className="start-button" onClick={startGame} disabled={orderedPlayers.length < 2}>{orderedPlayers.length < 2 ? "EN AZ 2 OYUNCU GEREKLİ" : "OYUNU BAŞLAT"} <span>→</span></button> : <div className="waiting-host">HOST OYUNU BAŞLATACAK <span className="dots"><i/><i/><i/></span></div>}
         </section>
       ) : room.phase === "finished" ? (

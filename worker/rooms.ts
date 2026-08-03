@@ -6,7 +6,7 @@ export interface Env {
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
 type GameCard = { id?: number; kind?: string; maxSelections?: number; outcome?: string; [key: string]: unknown };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; deck: GameCard[]; currentPlayer: number; card: GameCard | null; revealedBy: string | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; activeCategories: string[]; deck: GameCard[]; currentPlayer: number; card: GameCard | null; revealedBy: string | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +31,7 @@ export default {
 };
 
 export class GameRoom extends DurableObject<Env> {
-  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, deck: [], currentPlayer: 0, card: null, revealedBy: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
+  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, activeCategories: ["condition", "vote", "duel", "digital"], deck: [], currentPlayer: 0, card: null, revealedBy: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -76,9 +76,15 @@ export class GameRoom extends DurableObject<Env> {
       this.ensureHost();
       const isHost = this.state.hostId === playerId;
       if (msg.type === "configure" && isHost && this.state.phase === "lobby") this.state.totalCards = Math.max(10, Math.min(100, Number(msg.totalCards ?? 30)));
+      if (msg.type === "configureCategories" && isHost && this.state.phase === "lobby") {
+        const allowed = new Set(["condition", "vote", "duel", "digital"]);
+        const selected = [...new Set(Array.isArray(msg.categories) ? msg.categories : [])].filter((kind) => allowed.has(kind));
+        if (selected.length) this.state.activeCategories = selected;
+      }
       if (msg.type === "start" && isHost && this.state.phase === "lobby" && Array.isArray(msg.deck)) {
-        const deck = msg.deck.slice(0, this.state.totalCards);
-        if (deck.length >= 10) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0, deck, card: null, revealedBy: null, responses: {}, votes: {}, confirmed: false });
+        const seen = new Set();
+        const deck = msg.deck.filter((card: GameCard) => this.state.activeCategories.includes(String(card.kind)) && !seen.has(card.id) && seen.add(card.id)).slice(0, this.state.totalCards);
+        if (deck.length) Object.assign(this.state, { phase: "playing", round: 1, totalCards: deck.length, currentPlayer: 0, deck, card: null, revealedBy: null, responses: {}, votes: {}, confirmed: false });
       }
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
       if (msg.type === "revealCard" && this.state.phase === "playing" && !this.state.card && this.state.players[this.state.currentPlayer]?.id === playerId) {
