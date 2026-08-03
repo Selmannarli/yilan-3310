@@ -164,8 +164,8 @@ export default function Home() {
   const orderedPlayers = useMemo(() => room?.players ?? [], [room]);
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
+    <main className={`app-shell phase-${room?.phase ?? "welcome"}`}>
+      <header className={`topbar ${!room || room.phase==="lobby" ? "landing-topbar" : ""}`}>
         <button className="brand" onClick={leave} aria-label="SHOT ana ekran"><span className="brand-mark"><i>!</i></span><span className="brand-word">SHOT<span>!</span></span></button>
         <div className="room-pill"><i className={connection === "online" ? "" : "offline"}/> ODA <strong>{roomCode ? `${roomCode.slice(0,3)} ${roomCode.slice(3)}` : "— — —"}</strong></div>
         <button className="icon-button" onClick={() => setSettingsOpen(true)} aria-label="Ayarları aç">⚙</button>
@@ -176,7 +176,7 @@ export default function Home() {
           <div className="eyebrow">CANLI PARTİ OYUNU</div><h1>Ekibi topla,<br/><em>oyunu başlat.</em></h1>
           <p>Kendine bir oyun kimliği seç. Sonra yeni bir oda aç veya arkadaşının 6 haneli koduyla katıl.</p>
           <section className="identity-card"><div className="identity-head"><PlayerAvatar player={{id:"preview",nickname,avatar,shots:0,connected:true}} index={1}/><label className="field"><span>TAKMA ADIN</span><input value={nickname} onChange={(e) => setNickname(e.target.value.slice(0,24))} aria-label="Takma ad" autoComplete="nickname"/></label><button className="reroll" onClick={()=>setNickname(randomNickname())} aria-label="Yeni rastgele takma ad">↻</button></div><div className="avatar-picker" aria-label="Avatar seç">{avatars.map((item)=><button key={item} className={avatar===item?"active":""} onClick={()=>setAvatar(item)} aria-label={`${item} avatarını seç`}>{item}</button>)}</div></section>
-          <button className="start-button create" disabled={connection === "connecting"} onClick={createRoom}>{connection === "connecting" ? "Oda hazırlanıyor…" : "+ Oda oluştur"}</button>
+          <button className="start-button create cta-button" disabled={connection === "connecting"} onClick={createRoom}><span className="cta-icon">♜<i>+</i></span><span className="cta-copy"><b>{connection === "connecting" ? "Oda hazırlanıyor…" : "Yeni oda oluştur"}</b><small>Arkadaşlarını davet et ve oyunu başlat</small></span><em>→</em></button>
           <div className="divider"><span>ODA KODUN VAR MI?</span></div>
           <div className="join-form"><input inputMode="numeric" value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, "").slice(0,6))} placeholder="000 000" aria-label="6 haneli oda kodu"/><button onClick={joinRoom}>Odaya katıl →</button></div>
           {error && <p className="error">{error}</p>}
@@ -186,14 +186,16 @@ export default function Home() {
         <section className="lobby">
           <div className="eyebrow">ODA HAZIR · CANLI</div><h1>Arkadaşlarını çağır,<br/><em>ayarları seç.</em></h1>
           <p>Oda kodunu arkadaşlarınla paylaş. Herkes hazır olduğunda oyunu başlat.</p>
-          <div className="join-card"><div className="fake-qr" aria-label="Oda bağlantısı"><span>SHOT!</span></div><div><small>ODA KODU</small><strong>{roomCode.slice(0,3)} {roomCode.slice(3)}</strong><button onClick={copyRoom}>{copied?"✓ Bağlantı kopyalandı":"Bağlantıyı kopyala"}</button></div></div>
+          <div className="join-card"><div className="room-code-block"><small>ODA KODU</small><strong>{roomCode.slice(0,3)} {roomCode.slice(3)}</strong><span><i/> Kod geçerli, arkadaşların katılabilir.</span></div><div className="qr-actions"><div className="fake-qr" aria-label="Oda bağlantısı"><span>SHOT!</span></div><button onClick={copyRoom}>{copied?"✓ Kopyalandı":"↥ Kodu paylaş"}</button></div></div>
           <div className="lobby-head"><b>OYUNCULAR · {orderedPlayers.length}</b><span>CANLI BAĞLANTI</span></div>
-          <div className="lobby-players">{orderedPlayers.map((p,i) => <div key={p.id}><PlayerAvatar player={p} index={i}/><b>{p.nickname}{p.id === room.hostId && <small> YÖNETİCİ</small>}</b><i className={p.connected ? "" : "away"}>{p.connected ? "✓" : "○"}</i></div>)}</div>
+          <div className="lobby-players">{orderedPlayers.map((p,i) => <div key={p.id}><PlayerAvatar player={p} index={i}/><b>{p.nickname}{p.id === room.hostId && <small> YÖNETİCİ</small>}</b><i className={p.connected ? "" : "away"}>{p.connected ? "✓" : "○"}</i></div>)}<button className="invite-tile" onClick={copyRoom}><strong>＋</strong><span>Davet et</span></button></div>
+          <section className="lobby-settings"><div className="settings-kicker">OYUN AYARLARI</div>
           <div className="card-count-picker"><div><small>OYUN UZUNLUĞU</small><strong>{room.totalCards} kart</strong></div><div>{[15,30,50,75].map((count)=><button key={count} disabled={!isHost} className={room.totalCards===count?"active":""} onClick={()=>send({type:"configure",totalCards:count})}>{count}</button>)}</div><p>{room.totalCards<=15?"Hızlı · yaklaşık 20 dakika":room.totalCards<=30?"Standart · yaklaşık 45 dakika":room.totalCards<=50?"Uzun · yaklaşık 75 dakika":"Maraton · 2 saate kadar"}</p></div>
           <div className="pass-count-picker"><div><small>KİŞİ BAŞI PAS HAKKI</small><strong>{room.passLimit} hak</strong></div><div>{[1,2].map((count)=><button key={count} disabled={!isHost} className={room.passLimit===count?"active":""} onClick={()=>send({type:"configurePasses",passLimit:count})}>{count}</button>)}</div><p>Her oyuncu, sırası kendisindeyken istemediği kartı değiştirebilir.</p></div>
           <div className="category-filter-head"><div><small>KART KATEGORİLERİ</small><strong>{availableCardCount} farklı kart</strong></div><span>{isHost?"İstediklerini aç veya kapat":"Oda yöneticisi seçiyor"}</span></div>
           <div className="category-filter">{Object.entries(categoryMeta).map(([key,meta])=>{const active=activeCategories.includes(key);return <button key={key} disabled={!isHost} className={active?"active":""} onClick={()=>toggleCategory(key)} style={{"--cat":meta.color} as React.CSSProperties}><i>{meta.icon}</i><span><b>{meta.label}</b><small>{cards.filter(c=>c.kind===key).length} kart</small></span><em>{active?"✓":"+"}</em></button>})}</div>
-          {isHost ? <button className="start-button" onClick={startGame} disabled={orderedPlayers.length < 2}>{orderedPlayers.length < 2 ? "En az 2 oyuncu gerekli" : "Oyunu başlat"} <span>→</span></button> : <div className="waiting-host">Oda yöneticisi oyunu başlatacak <span className="dots"><i/><i/><i/></span></div>}
+          </section>
+          {isHost ? <button className="start-button cta-button lobby-start" onClick={startGame} disabled={orderedPlayers.length < 2}><span className="cta-icon">♜<i>+</i></span><span className="cta-copy"><b>Oyunu başlat</b><small>{orderedPlayers.length < 2 ? "En az 2 oyuncu gerekli" : `${orderedPlayers.length} oyuncu hazır`}</small></span><em>→</em></button> : <div className="waiting-host">Oda yöneticisi oyunu başlatacak <span className="dots"><i/><i/><i/></span></div>}
         </section>
       ) : room.phase === "finished" ? (
         <section className="lobby finish-screen"><div className="finish-icon">★</div><div className="eyebrow">OYUN TAMAMLANDI</div><h1>Harika oyundu,<br/><em>efsane ekip.</em></h1><p>Seçtiğiniz {room.totalCards} turun tamamı oynandı. Gecenin tablosu:</p><div className="final-ranking">{orderedPlayers.slice().sort((a,b)=>b.shots-a.shots).map((p,i)=><div key={p.id}><b>{i+1}</b><PlayerAvatar player={p} index={orderedPlayers.indexOf(p)}/><p>{p.nickname}</p><strong>{p.shots} <small>SHOT</small></strong></div>)}</div><button className="start-button" onClick={leave}>Ana ekrana dön →</button></section>
