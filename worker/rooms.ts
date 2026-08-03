@@ -6,7 +6,8 @@ export interface Env {
 
 type Player = { id: string; nickname: string; shots: number; connected: boolean; joinedAt: number };
 type GameCard = { id?: number; kind?: string; maxSelections?: number; outcome?: string; [key: string]: unknown };
-type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; activeCategories: string[]; deck: GameCard[]; currentPlayer: number; card: GameCard | null; revealedBy: string | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
+type MiniGame = { game: string; phase: "selecting" | "ready" | "playing" | "result"; challengerId: string; opponentId: string | null; readyIds: string[]; startedAt: number | null; triggerAt: number | null; endsAt: number | null; challenge: Record<string, unknown>; submissions: Record<string, { value: unknown; at: number }>; winners: string[]; losers: string[]; details: Record<string, unknown> };
+type RoomState = { hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished"; round: number; totalCards: number; activeCategories: string[]; deck: GameCard[]; currentPlayer: number; card: GameCard | null; revealedBy: string | null; miniGame: MiniGame | null; responses: Record<string, boolean>; votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[]; confirmed: boolean };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +32,7 @@ export default {
 };
 
 export class GameRoom extends DurableObject<Env> {
-  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, activeCategories: ["condition", "vote", "duel", "digital"], deck: [], currentPlayer: 0, card: null, revealedBy: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
+  private state: RoomState = { hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, activeCategories: ["condition", "vote", "duel", "digital"], deck: [], currentPlayer: 0, card: null, revealedBy: null, miniGame: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], confirmed: false };
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -84,13 +85,22 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.type === "start" && isHost && this.state.phase === "lobby" && Array.isArray(msg.deck)) {
         const seen = new Set();
         const deck = msg.deck.filter((card: GameCard) => this.state.activeCategories.includes(String(card.kind)) && !seen.has(card.id) && seen.add(card.id)).slice(0, this.state.totalCards);
-        if (deck.length) Object.assign(this.state, { phase: "playing", round: 1, totalCards: deck.length, currentPlayer: 0, deck, card: null, revealedBy: null, responses: {}, votes: {}, confirmed: false });
+        if (deck.length) Object.assign(this.state, { phase: "playing", round: 1, totalCards: deck.length, currentPlayer: 0, deck, card: null, revealedBy: null, miniGame: null, responses: {}, votes: {}, confirmed: false });
       }
       if (msg.type === "pause" && isHost) this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
       if (msg.type === "revealCard" && this.state.phase === "playing" && !this.state.card && this.state.players[this.state.currentPlayer]?.id === playerId) {
         this.state.card = this.state.deck[this.state.round - 1] ?? null;
         this.state.revealedBy = playerId;
+        if (this.state.card?.kind === "digital") this.state.miniGame = { game: String(this.state.card.game), phase: "selecting", challengerId: playerId, opponentId: null, readyIds: [], startedAt: null, triggerAt: null, endsAt: null, challenge: {}, submissions: {}, winners: [], losers: [], details: {} };
       }
+      if (msg.type === "selectMiniOpponent" && this.state.miniGame?.phase === "selecting" && this.state.miniGame.challengerId === playerId && this.state.players.some((p) => p.id === msg.opponentId && p.id !== playerId && p.connected)) {
+        this.state.miniGame.opponentId = msg.opponentId; this.state.miniGame.phase = "ready";
+      }
+      if (msg.type === "miniReady" && this.state.miniGame?.phase === "ready" && this.isMiniPlayer(playerId)) {
+        if (!this.state.miniGame.readyIds.includes(playerId)) this.state.miniGame.readyIds.push(playerId);
+        if (this.state.miniGame.readyIds.length === 2) this.startMiniGame();
+      }
+      if (msg.type === "miniAction" && this.state.miniGame?.phase === "playing" && this.isMiniPlayer(playerId)) this.handleMiniAction(playerId, msg.action, msg.value);
       if (msg.type === "answer" && this.state.phase === "playing" && this.state.card && !this.state.confirmed) this.state.responses[playerId] = Boolean(msg.drank);
       if (msg.type === "vote" && this.state.card?.kind === "vote" && !this.state.voteRevealed) {
         const max = Math.max(1, Math.min(2, this.state.players.length - 1, Number(this.state.card.maxSelections ?? 1)));
@@ -128,7 +138,7 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.type === "next" && isHost && this.state.players.length && this.state.confirmed) {
         if (this.state.round >= this.state.totalCards) this.state.phase = "finished";
         else {
-          this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.revealedBy = null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.confirmed = false;
+          this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length; this.state.card = null; this.state.revealedBy = null; this.state.miniGame = null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.confirmed = false;
         }
       }
       if (msg.type === "transfer" && isHost && this.state.players.some((p) => p.id === msg.playerId)) this.state.hostId = msg.playerId;
@@ -154,6 +164,69 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private setConnected(id: string, connected: boolean) { const p = this.state.players.find((x) => x.id === id); if (p) p.connected = connected; }
+  private isMiniPlayer(id: string) { const game = this.state.miniGame; return Boolean(game && (game.challengerId === id || game.opponentId === id)); }
+  private otherMiniPlayer(id: string) { const game = this.state.miniGame!; return game.challengerId === id ? game.opponentId! : game.challengerId; }
+  private makeChallenge(game: string) {
+    if (game === "emoji_memory") {
+      const emojis = ["🍋", "🦊", "🎲", "🚀", "🌵", "🎧", "🍕", "🐙"];
+      const sequence = Array.from({ length: 4 }, () => emojis[Math.floor(Math.random() * emojis.length)]);
+      const options = [sequence, ...Array.from({ length: 3 }, () => [...sequence].sort(() => Math.random() - .5))].sort(() => Math.random() - .5);
+      return { sequence, options, correctIndex: options.findIndex((item) => item.join("") === sequence.join("")) };
+    }
+    if (game === "odd_one") return { targetIndex: Math.floor(Math.random() * 24), normal: "●", odd: "◉" };
+    return {};
+  }
+  private startMiniGame() {
+    const game = this.state.miniGame!; const now = Date.now();
+    game.phase = "playing"; game.submissions = {}; game.challenge = this.makeChallenge(game.game);
+    game.startedAt = game.game === "rapid_tap" ? now + 3000 : now;
+    game.triggerAt = game.game === "reflex" ? now + 2000 + Math.floor(Math.random() * 4000) : null;
+    game.endsAt = game.game === "rapid_tap" ? game.startedAt + 5000 : null;
+  }
+  private handleMiniAction(playerId: string, action: string, value: unknown) {
+    const game = this.state.miniGame!; const now = Date.now(); const other = this.otherMiniPlayer(playerId);
+    if (game.submissions[playerId]) return;
+    if (game.game === "reflex" && action === "tap") {
+      game.submissions[playerId] = { value: game.triggerAt ? now - game.triggerAt : -1, at: now };
+      if (!game.triggerAt || now < game.triggerAt) this.finishMini([other], [playerId], { reason: "early", times: this.miniValues() });
+      else this.finishMini([playerId], [other], { times: this.miniValues() });
+      return;
+    }
+    if (game.game === "rapid_tap" && action === "finish") game.submissions[playerId] = { value: Math.max(0, Math.min(250, Number(value) || 0)), at: now };
+    if (game.game === "five_seconds" && action === "stop") game.submissions[playerId] = { value: now - (game.startedAt ?? now), at: now };
+    if ((game.game === "emoji_memory" || game.game === "odd_one") && action === "answer") game.submissions[playerId] = { value: Number(value), at: now };
+    if (game.game === "trust" && action === "choice" && (value === "trust" || value === "betray")) game.submissions[playerId] = { value, at: now };
+    if (Object.keys(game.submissions).length < 2) return;
+    const a = game.challengerId, b = game.opponentId!, av = game.submissions[a].value, bv = game.submissions[b].value;
+    if (game.game === "rapid_tap") this.finishByScore(a, b, Number(av), Number(bv), true, { taps: this.miniValues() });
+    if (game.game === "five_seconds") this.finishByScore(a, b, Math.abs(5000 - Number(av)), Math.abs(5000 - Number(bv)), false, { times: this.miniValues() });
+    if (game.game === "emoji_memory") {
+      const correct = Number(game.challenge.correctIndex); const ac = av === correct, bc = bv === correct;
+      if (!ac && !bc) { game.challenge = this.makeChallenge(game.game); game.submissions = {}; game.startedAt = Date.now(); return; }
+      if (ac && bc) this.finishByScore(a, b, game.submissions[a].at, game.submissions[b].at, false, { answers: this.miniValues() });
+      else this.finishMini(ac ? [a] : [b], ac ? [b] : [a], { answers: this.miniValues() });
+    }
+    if (game.game === "odd_one") {
+      const target = Number(game.challenge.targetIndex); const ac = av === target, bc = bv === target;
+      if (ac === bc) this.finishByScore(a, b, game.submissions[a].at, game.submissions[b].at, false, { answers: this.miniValues() });
+      else this.finishMini(ac ? [a] : [b], ac ? [b] : [a], { answers: this.miniValues() });
+    }
+    if (game.game === "trust") {
+      if (av === "trust" && bv === "trust") this.finishMini([], [], { choices: this.miniValues() });
+      else if (av === "betray" && bv === "betray") this.finishMini([], [a, b], { choices: this.miniValues() });
+      else this.finishMini([av === "betray" ? a : b], [av === "trust" ? a : b], { choices: this.miniValues() });
+    }
+  }
+  private finishByScore(a: string, b: string, av: number, bv: number, higherWins: boolean, details: Record<string, unknown>) {
+    if (av === bv) this.finishMini([], [], details);
+    else { const aWins = higherWins ? av > bv : av < bv; this.finishMini(aWins ? [a] : [b], aWins ? [b] : [a], details); }
+  }
+  private miniValues() { return Object.fromEntries(Object.entries(this.state.miniGame!.submissions).map(([id, item]) => [id, item.value])); }
+  private finishMini(winners: string[], losers: string[], details: Record<string, unknown>) {
+    const game = this.state.miniGame!; game.phase = "result"; game.winners = winners; game.losers = losers; game.details = details;
+    this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (losers.includes(p.id) ? 1 : 0) }));
+    this.state.confirmed = true;
+  }
   private ensureHost() {
     const host = this.state.players.find((p) => p.id === this.state.hostId);
     if (!host?.connected) this.state.hostId = this.state.players.find((p) => p.connected)?.id ?? this.state.players[0]?.id ?? null;
@@ -162,7 +235,8 @@ export class GameRoom extends DurableObject<Env> {
     const tally: Record<string, number> = {};
     if (this.state.voteRevealed) Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
     const { votes: _secretVotes, deck: _secretDeck, ...safe } = this.state;
-    return { ...safe, playerCount: this.state.players.length, votedPlayerIds: Object.keys(this.state.votes), myVote: viewerId ? this.state.votes[viewerId] ?? [] : [], voteTally: tally };
+    const miniGame = this.state.miniGame ? { ...this.state.miniGame, submissions: this.state.miniGame.phase === "result" ? this.state.miniGame.submissions : {}, submittedIds: Object.keys(this.state.miniGame.submissions) } : null;
+    return { ...safe, miniGame, playerCount: this.state.players.length, votedPlayerIds: Object.keys(this.state.votes), myVote: viewerId ? this.state.votes[viewerId] ?? [] : [], voteTally: tally };
   }
   private async saveAndBroadcast() {
     await this.ctx.storage.put("state", this.state);
