@@ -1,410 +1,203 @@
 import { DurableObject } from "cloudflare:workers";
 
 export interface Env { ROOMS: DurableObjectNamespace<GameRoom>; }
-
-type Player = { id: string; nickname: string; avatar: string; shots: number; connected: boolean; joinedAt: number };
-type GameCard = { id?: number; kind?: string; game?: string; maxSelections?: number; outcome?: string; [key: string]: unknown };
-type Submission = { value: unknown; at: number; valid?: boolean };
+type Category = "condition"|"vote"|"duel"|"digital";
+type MiniKind = "odd_one"|"reflex"|"rapid_tap"|"five_seconds"|"emoji_memory"|"trust"|"quick_math"|"xox"|"bomb"|"common_answer";
+type Player = { id:string; nickname:string; avatar:string; shots:number; connected:boolean; spectator:boolean; joinedAt:number };
+type GameCard = { id:number; kind:Category; game?:MiniKind; level?:"light"|"normal"|"hard"; maxSelections?:number; outcome?:string; requiresPhone?:boolean; trivia?:boolean; groupVote?:boolean };
+type Submission = { value:unknown; at:number; valid:boolean };
 type MiniGame = {
-  game: string;
-  phase: "selecting" | "ready" | "countdown" | "playing" | "result";
-  challengerId: string;
-  opponentId: string | null;
-  participantIds: string[];
-  readyIds: string[];
-  startedAt: number | null;
-  triggerAt: number | null;
-  endsAt: number | null;
-  challenge: Record<string, unknown>;
-  submissions: Record<string, Submission>;
-  winners: string[];
-  losers: string[];
-  rankings: string[];
-  details: Record<string, unknown>;
-  confirmed: boolean;
+  game:MiniKind; phase:"selecting"|"ready"|"countdown"|"playing"|"result"; challengerId:string; opponentId:string|null;
+  participantIds:string[]; readyIds:string[]; startedAt:number|null; triggerAt:number|null; endsAt:number|null;
+  challenge:Record<string,unknown>; secret:Record<string,unknown>; submissions:Record<string,Submission>;
+  winners:string[]; losers:string[]; rankings:string[]; details:Record<string,unknown>; confirmed:boolean;
 };
-type TurnResult = { drinkers: string[]; nonDrinkers: string[] };
+type TurnResult = { drinkers:string[]; nonDrinkers:string[]; reason?:string };
+type RoomSettings = {
+  categoryWeights:Record<Category,number>; contentLevel:"light"|"normal"|"hard"; activeMiniGames:MiniKind[];
+  digitalTwoPlayer:boolean; digitalGroup:boolean; preventMiniRepeat:boolean;
+  duelOpponentMode:"opener"|"system"; preventOpponentRepeat:boolean; allowPhoneCards:boolean; allowTrivia:boolean; allowGroupVoteDuels:boolean;
+  votePrivacy:"secret"|"open"; showVoteDistribution:boolean; voteResultMode:"all"|"winner"; allowSelfVote:boolean; voteTie:"drink"|"revote";
+  requireHostConfirm:boolean; autoConfirm:boolean; autoAdvance:boolean;
+};
+type Snapshot = { shots:Record<string,number>; turnResult:TurnResult|null; confirmed:boolean; resultAt:number|null };
 type RoomState = {
-  hostId: string | null; players: Player[]; phase: "lobby" | "playing" | "paused" | "finished";
-  round: number; totalCards: number; passLimit: number; passes: Record<string, number>;
-  activeCategories: string[]; deck: GameCard[]; currentPlayer: number; card: GameCard | null;
-  revealedBy: string | null; miniGame: MiniGame | null; responses: Record<string, boolean>;
-  votes: Record<string, string[]>; voteRevealed: boolean; voteWinners: string[];
-  turnResult: TurnResult | null; confirmed: boolean; disconnectDeadlines: Record<string, number>; lastColorCombo: string;
+  hostId:string|null; players:Player[]; phase:"lobby"|"playing"|"paused"|"finished"; round:number; totalCards:number|null;
+  passLimit:number; passes:Record<string,number>; activeCategories:Category[]; settings:RoomSettings; cardPool:GameCard[]; usedCardIds:number[];
+  categoryHistory:Category[]; lastMiniGame:MiniKind|null; lastOddPosition:number|null; oddRegionCursor:number; lastDuelOpponent:string|null;
+  currentPlayer:number; card:GameCard|null; revealedBy:string|null; duelOpponentId:string|null; miniGame:MiniGame|null;
+  responses:Record<string,boolean>; votes:Record<string,string[]>; voteRevealed:boolean; voteWinners:string[]; voteRound:number;
+  turnResult:TurnResult|null; confirmed:boolean; resultAt:number|null; resultPreviousShots:Record<string,number>; lastSnapshot:Snapshot|null;
+  disconnectDeadlines:Record<string,number>;
 };
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
-const CATEGORY_WEIGHTS: Record<string, number> = { condition: 30, vote: 30, duel: 20, digital: 20 };
-const MINI_GAMES = new Set(["odd_one", "reflex", "rapid_tap", "five_seconds", "emoji_memory", "trust", "follow_target", "quick_math", "color_word", "number_memory"]);
-const randomInt = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
-const shuffle = <T,>(items: T[]) => {
-  const output = [...items];
-  for (let i = output.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [output[i], output[j]] = [output[j], output[i]]; }
-  return output;
-};
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
+const categories:Category[]=["condition","vote","duel","digital"];
+const miniKinds:MiniKind[]=["odd_one","reflex","rapid_tap","five_seconds","emoji_memory","trust","quick_math","xox","bomb","common_answer"];
+const twoPlayerGames=new Set<MiniKind>(["trust","xox"]);
+const randomInt=(min:number,max:number)=>min+Math.floor(Math.random()*(max-min+1));
+const shuffle=<T,>(values:T[])=>{const list=[...values];for(let i=list.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[list[i],list[j]]=[list[j],list[i]];}return list;};
+const defaultSettings=():RoomSettings=>({categoryWeights:{condition:30,vote:30,duel:20,digital:20},contentLevel:"normal",activeMiniGames:[...miniKinds],digitalTwoPlayer:true,digitalGroup:true,preventMiniRepeat:true,duelOpponentMode:"opener",preventOpponentRepeat:true,allowPhoneCards:true,allowTrivia:true,allowGroupVoteDuels:true,votePrivacy:"secret",showVoteDistribution:true,voteResultMode:"all",allowSelfVote:false,voteTie:"drink",requireHostConfirm:true,autoConfirm:false,autoAdvance:false});
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") return new Response(null, { headers: cors });
-    const url = new URL(request.url);
-    if (url.pathname === "/health") return Response.json({ ok: true, service: "shot-rooms" }, { headers: cors });
-    if (url.pathname === "/rooms" && request.method === "POST") {
-      for (let attempt = 0; attempt < 12; attempt++) {
-        const code = String(randomInt(100000, 999999));
-        const room = env.ROOMS.get(env.ROOMS.idFromName(code));
-        const created = await room.fetch(new Request(`${url.origin}/create`, { method: "POST" }));
-        if (created.status === 201) return Response.json({ code, websocket: `${url.origin.replace("http", "ws")}/rooms/${code}/connect` }, { headers: cors });
-      }
-      return Response.json({ error: "room_code_unavailable" }, { status: 503, headers: cors });
-    }
-    const match = url.pathname.match(/^\/rooms\/(\d{6})(\/connect)?$/);
-    if (!match) return Response.json({ error: "Not found" }, { status: 404, headers: cors });
-    return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(request);
-  },
-};
+const worker={async fetch(request:Request,env:Env):Promise<Response>{
+  if(request.method==="OPTIONS")return new Response(null,{headers:cors});const url=new URL(request.url);
+  if(url.pathname==="/health")return Response.json({ok:true,service:"shot-rooms"},{headers:cors});
+  if(url.pathname==="/rooms"&&request.method==="POST"){
+    for(let attempt=0;attempt<12;attempt++){const code=String(randomInt(100000,999999));const room=env.ROOMS.get(env.ROOMS.idFromName(code));const created=await room.fetch(new Request(`${url.origin}/create`,{method:"POST"}));if(created.status===201)return Response.json({code},{headers:cors});}
+    return Response.json({error:"room_code_unavailable"},{status:503,headers:cors});
+  }
+  const match=url.pathname.match(/^\/rooms\/(\d{6})(\/connect)?$/);if(!match)return Response.json({error:"not_found"},{status:404,headers:cors});
+  return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(request);
+}};
+export default worker;
 
-export class GameRoom extends DurableObject<Env> {
-  private created = false;
-  private state: RoomState = {
-    hostId: null, players: [], phase: "lobby", round: 0, totalCards: 30, passLimit: 2,
-    passes: {}, activeCategories: ["condition", "vote", "duel", "digital"], deck: [], currentPlayer: 0,
-    card: null, revealedBy: null, miniGame: null, responses: {}, votes: {}, voteRevealed: false,
-    voteWinners: [], turnResult: null, confirmed: false, disconnectDeadlines: {}, lastColorCombo: "",
-  };
+export class GameRoom extends DurableObject<Env>{
+  private state:RoomState={hostId:null,players:[],phase:"lobby",round:0,totalCards:30,passLimit:2,passes:{},activeCategories:[...categories],settings:defaultSettings(),cardPool:[],usedCardIds:[],categoryHistory:[],lastMiniGame:null,lastOddPosition:null,oddRegionCursor:0,lastDuelOpponent:null,currentPlayer:0,card:null,revealedBy:null,duelOpponentId:null,miniGame:null,responses:{},votes:{},voteRevealed:false,voteWinners:[],voteRound:0,turnResult:null,confirmed:false,resultAt:null,resultPreviousShots:{},lastSnapshot:null,disconnectDeadlines:{}};
+  constructor(ctx:DurableObjectState,env:Env){super(ctx,env);ctx.blockConcurrencyWhile(async()=>{const stored=await ctx.storage.get<Partial<RoomState>>("state");this.state={...this.state,...stored,settings:{...defaultSettings(),...(stored?.settings??{}),categoryWeights:{...defaultSettings().categoryWeights,...(stored?.settings?.categoryWeights??{})}},players:(stored?.players??[]).map((p)=>({...p,spectator:p.spectator??false,avatar:p.avatar||"0"})),cardPool:stored?.cardPool??[],usedCardIds:stored?.usedCardIds??[],categoryHistory:stored?.categoryHistory??[],disconnectDeadlines:stored?.disconnectDeadlines??{}};if(this.state.miniGame&&!miniKinds.includes(this.state.miniGame.game))this.state.miniGame=null;for(const ws of ctx.getWebSockets()){const meta=ws.deserializeAttachment() as {playerId?:string}|null;if(meta?.playerId)this.setConnected(meta.playerId,true);}});}
 
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => {
-      const stored = await ctx.storage.get<RoomState>("state");
-      const storedCreated = await ctx.storage.get<boolean>("created");
-      this.created = storedCreated ?? false;
-      this.state = { ...this.state, ...(stored ?? {}), deck: stored?.deck ?? [], passes: stored?.passes ?? {}, responses: stored?.responses ?? {}, votes: stored?.votes ?? {}, disconnectDeadlines: stored?.disconnectDeadlines ?? {} };
-      this.state.players = this.state.players.map((player) => ({ ...player, avatar: player.avatar || "🎲" }));
-      if (this.state.miniGame && !Array.isArray(this.state.miniGame.participantIds)) {
-        const legacy = this.state.miniGame as MiniGame & { opponentId?: string | null };
-        legacy.participantIds = [legacy.challengerId, legacy.opponentId].filter(Boolean) as string[];
-        legacy.rankings = legacy.rankings ?? []; legacy.confirmed = legacy.confirmed ?? this.state.confirmed;
-      }
-      for (const ws of ctx.getWebSockets()) {
-        const meta = ws.deserializeAttachment() as { playerId?: string } | null;
-        if (meta?.playerId) this.setConnected(meta.playerId, true);
-      }
-    });
+  async fetch(request:Request):Promise<Response>{const url=new URL(request.url);
+    if(request.method==="POST"&&url.pathname==="/create"){if(await this.ctx.storage.get<boolean>("created"))return Response.json({error:"room_exists"},{status:409,headers:cors});await this.ctx.storage.put("created",true);return Response.json({created:true},{status:201,headers:cors});}
+    if(!await this.ctx.storage.get<boolean>("created"))return Response.json({error:"room_not_found"},{status:404,headers:cors});
+    if(request.headers.get("Upgrade")!=="websocket")return Response.json(this.publicState(),{headers:cors});
+    const nickname=(url.searchParams.get("nickname")||"Player").trim().slice(0,24),avatar=(url.searchParams.get("avatar")||"0").slice(0,12),playerId=url.searchParams.get("playerId")||crypto.randomUUID();
+    const pair=new WebSocketPair();const [client,server]=Object.values(pair);this.ctx.acceptWebSocket(server);server.serializeAttachment({playerId});let player=this.state.players.find(p=>p.id===playerId);
+    if(player)Object.assign(player,{nickname,avatar,connected:true});else{player={id:playerId,nickname,avatar,shots:0,connected:true,spectator:false,joinedAt:Date.now()};this.state.players.push(player);if(!this.state.hostId)this.state.hostId=playerId;}
+    delete this.state.disconnectDeadlines[playerId];if(!(playerId in this.state.passes))this.state.passes[playerId]=this.state.passLimit;this.ensureHost();await this.saveAndBroadcast();server.send(JSON.stringify({type:"welcome",playerId,state:this.publicState(playerId)}));return new Response(null,{status:101,webSocket:client});
   }
 
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    if (request.method === "POST" && url.pathname === "/create") {
-      if (await this.ctx.storage.get<boolean>("created")) return Response.json({ error: "room_exists" }, { status: 409, headers: cors });
-      this.created = true; await this.ctx.storage.put("created", true);
-      return Response.json({ created: true }, { status: 201, headers: cors });
+  async webSocketMessage(ws:WebSocket,raw:string|ArrayBuffer){const {playerId}=(ws.deserializeAttachment()||{}) as {playerId:string};try{const msg=JSON.parse(typeof raw==="string"?raw:new TextDecoder().decode(raw));this.ensureHost();const isHost=this.state.hostId===playerId;
+    if(msg.type==="configure"&&isHost)this.configure(msg);
+    if(msg.type==="start"&&isHost&&this.state.phase==="lobby"&&Array.isArray(msg.cards)){this.state.cardPool=this.sanitizeCards(msg.cards);if(this.state.cardPool.length){Object.assign(this.state,{phase:"playing",round:1,currentPlayer:0,passes:Object.fromEntries(this.state.players.map(p=>[p.id,this.state.passLimit])),usedCardIds:[],categoryHistory:[],lastMiniGame:null,card:null,revealedBy:null,duelOpponentId:null,miniGame:null,responses:{},votes:{},voteRevealed:false,voteWinners:[],turnResult:null,confirmed:false,resultAt:null,lastSnapshot:null});}}
+    if(msg.type==="pause"&&isHost&&!["lobby","finished"].includes(this.state.phase))this.state.phase=this.state.phase==="paused"?"playing":"paused";
+    if(msg.type==="revealCard"&&this.state.phase==="playing"&&!this.state.card&&this.currentPlayerId()===playerId){const drawn=this.drawCard();if(drawn){this.state.card=drawn;this.state.revealedBy=playerId;if(drawn.kind==="digital"&&drawn.game)this.createMini(drawn.game,playerId);if(drawn.kind==="duel")this.prepareDuel(playerId);}}
+    if(msg.type==="selectDuelOpponent"&&this.state.card?.kind==="duel"&&this.currentPlayerId()===playerId&&!this.state.duelOpponentId){const target=this.activePlayers().find(p=>p.id===msg.opponentId&&p.id!==playerId);if(target){this.state.duelOpponentId=target.id;this.state.lastDuelOpponent=target.id;}}
+    if(msg.type==="selectMiniOpponent"&&this.state.miniGame?.phase==="selecting"&&this.state.miniGame.challengerId===playerId){const target=this.activePlayers().find(p=>p.id===msg.opponentId&&p.id!==playerId);if(target){const mini=this.state.miniGame;mini.opponentId=target.id;mini.participantIds=[playerId,target.id];mini.phase="ready";}}
+    if(msg.type==="miniReady"&&this.state.miniGame?.phase==="ready"&&this.isMiniPlayer(playerId)){const mini=this.state.miniGame;if(!mini.readyIds.includes(playerId))mini.readyIds.push(playerId);if(mini.participantIds.every(id=>mini.readyIds.includes(id)||!this.player(id)?.connected))this.startMini();}
+    if(msg.type==="miniAction"&&this.state.miniGame&&["countdown","playing"].includes(this.state.miniGame.phase)&&this.isMiniPlayer(playerId))this.handleMiniAction(playerId,String(msg.action),msg.value);
+    if(msg.type==="excludeMiniPlayer"&&isHost&&this.state.miniGame&&!this.state.miniGame.confirmed&&msg.playerId!==playerId)this.excludeMiniPlayer(String(msg.playerId));
+    if(msg.type==="restartMini"&&isHost&&this.state.miniGame)this.resetMini();
+    if(msg.type==="cancelMini"&&isHost&&this.state.miniGame&&!this.state.confirmed)this.finishMini([],[],this.state.miniGame.participantIds,{reason:"cancelled"});
+    if(msg.type==="confirmMini"&&isHost&&this.state.miniGame?.phase==="result"&&!this.state.miniGame.confirmed)this.confirmMini();
+    if(msg.type==="answer"&&this.state.phase==="playing"&&this.state.card&&!this.state.confirmed&&!this.isSpectator(playerId)&&!this.state.miniGame){this.state.responses[playerId]=Boolean(msg.drank);this.maybeAutoConfirmAnswers();}
+    if(msg.type==="vote"&&this.state.card?.kind==="vote"&&!this.state.voteRevealed&&!this.isSpectator(playerId)){this.recordVote(playerId,msg.selections);this.maybeAutoRevealVotes();}
+    if(msg.type==="revealVotes"&&isHost&&this.everyoneVoted())this.revealVotes();
+    if(msg.type==="confirm"&&isHost&&!this.state.confirmed&&!this.state.miniGame&&this.everyoneAnswered())this.confirmAnswers();
+    if(msg.type==="next"&&isHost&&this.state.confirmed)this.advanceTurn();
+    if(msg.type==="skip"&&this.state.card&&!this.state.confirmed&&this.currentPlayerId()===playerId&&(this.state.passes[playerId]??0)>0){this.state.passes[playerId]-=1;this.advanceTurn(true);}
+    if(msg.type==="undoResult"&&isHost)this.undoResult();
+    if(msg.type==="adjustResult"&&isHost&&this.state.confirmed)this.adjustResult(String(msg.playerId),Boolean(msg.drinks));
+    if(msg.type==="replayCard"&&isHost&&this.state.card)this.resetTurn(false);
+    if(msg.type==="redrawCard"&&isHost&&this.state.card&&!this.state.confirmed){this.state.usedCardIds.push(this.state.card.id);this.resetTurn(true);}
+    if(msg.type==="skipTurn"&&isHost)this.advanceTurn(true);
+    if(msg.type==="shots"&&isHost)this.state.players=this.state.players.map(p=>({...p,shots:Math.max(0,Math.floor(Number(msg.shots?.[p.id]??p.shots)))}));
+    if(msg.type==="reorder"&&isHost&&Array.isArray(msg.playerIds))this.reorderPlayers(msg.playerIds.map(String));
+    if(msg.type==="transfer"&&isHost&&this.player(String(msg.playerId)))this.state.hostId=String(msg.playerId);
+    if(msg.type==="spectator"&&isHost&&msg.playerId!==playerId){const target=this.player(String(msg.playerId));if(target)target.spectator=Boolean(msg.spectator);}
+    if(msg.type==="kick"&&isHost&&msg.playerId!==playerId)this.state.players=this.state.players.filter(p=>p.id!==msg.playerId);
+    if(msg.type==="endGame"&&isHost)this.state.phase="finished";
+    await this.scheduleAlarm();await this.saveAndBroadcast();
+  }catch{try{ws.send(JSON.stringify({type:"error",message:"invalid_message"}));}catch{/* closed */}}}
+
+  async webSocketClose(ws:WebSocket){await this.disconnect(ws);}async webSocketError(ws:WebSocket){await this.disconnect(ws);}
+  async alarm(){const now=Date.now(),mini=this.state.miniGame;
+    for(const [id,deadline] of Object.entries(this.state.disconnectDeadlines))if(deadline<=now){delete this.state.disconnectDeadlines[id];if(mini&&mini.participantIds.includes(id)&&mini.phase!=="result"){if(twoPlayerGames.has(mini.game)){const winner=mini.participantIds.find(x=>x!==id);this.finishMini(winner?[winner]:[],[id],winner?[winner,id]:[id],{reason:"disconnected"});}else mini.submissions[id]={value:"disconnected",at:now,valid:false};}}
+    if(mini&&mini.phase!=="result"){
+      if(mini.game==="xox"&&Number(mini.secret.moveDeadline)<=now){const loser=String(mini.challenge.currentTurnId);const winner=mini.participantIds.find(id=>id!==loser);this.finishMini(winner?[winner]:[],[loser],winner?[winner,loser]:[loser],{reason:"timeout",board:mini.challenge.board});}
+      else if(mini.game==="bomb"&&Number(mini.secret.explodeAt)<=now){const loser=String(mini.challenge.holderId);this.finishMini(mini.participantIds.filter(id=>id!==loser),[loser],[...mini.participantIds.filter(id=>id!==loser),loser],{holderId:loser});}
+      else if(mini.endsAt&&mini.endsAt+2500<=now){for(const id of mini.participantIds)if(!mini.submissions[id])mini.submissions[id]={value:"timeout",at:now,valid:false};this.evaluateMini(true);}
     }
-    if (!await this.ctx.storage.get<boolean>("created")) return Response.json({ error: "room_not_found" }, { status: 404, headers: cors });
-    this.created = true;
-    if (request.headers.get("Upgrade") !== "websocket") return Response.json(this.publicState(), { headers: cors });
-    const nickname = (url.searchParams.get("nickname") || "Oyuncu").trim().slice(0, 24);
-    const avatar = (url.searchParams.get("avatar") || "🎲").trim().slice(0, 8);
-    const playerId = url.searchParams.get("playerId") || crypto.randomUUID();
-    const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
-    this.ctx.acceptWebSocket(server); server.serializeAttachment({ playerId });
-    let player = this.state.players.find((item) => item.id === playerId);
-    if (player) Object.assign(player, { nickname, avatar, connected: true });
-    else {
-      player = { id: playerId, nickname, avatar, shots: 0, connected: true, joinedAt: Date.now() };
-      this.state.players.push(player); if (!this.state.hostId) this.state.hostId = playerId;
-    }
-    delete this.state.disconnectDeadlines[playerId];
-    if (!(playerId in this.state.passes)) this.state.passes[playerId] = this.state.passLimit;
-    this.ensureHost(); await this.saveAndBroadcast();
-    server.send(JSON.stringify({ type: "welcome", playerId, state: this.publicState(playerId) }));
-    return new Response(null, { status: 101, webSocket: client });
+    if(this.state.confirmed&&this.state.settings.autoAdvance&&this.state.resultAt&&this.state.resultAt+3000<=now)this.advanceTurn();await this.scheduleAlarm();await this.saveAndBroadcast();
   }
 
-  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
-    const { playerId } = (ws.deserializeAttachment() || {}) as { playerId: string };
-    try {
-      const msg = JSON.parse(typeof raw === "string" ? raw : new TextDecoder().decode(raw));
-      this.ensureHost(); const isHost = this.state.hostId === playerId;
-      if (msg.type === "configure" && isHost && this.state.phase === "lobby") this.state.totalCards = Math.max(10, Math.min(100, Number(msg.totalCards ?? 30)));
-      if (msg.type === "configurePasses" && isHost && this.state.phase === "lobby") this.state.passLimit = Number(msg.passLimit) === 1 ? 1 : 2;
-      if (msg.type === "configureCategories" && isHost && this.state.phase === "lobby") {
-        const allowed = new Set(Object.keys(CATEGORY_WEIGHTS));
-        const selected = [...new Set<string>(Array.isArray(msg.categories) ? msg.categories.map(String) : [])].filter((kind) => allowed.has(kind));
-        if (selected.length) this.state.activeCategories = selected;
-      }
-      if (msg.type === "start" && isHost && this.state.phase === "lobby" && Array.isArray(msg.cards)) {
-        const pool = msg.cards.filter((card: GameCard) => card && typeof card === "object" && this.state.activeCategories.includes(String(card.kind)));
-        const deck = this.buildWeightedDeck(pool, this.state.totalCards);
-        if (deck.length === this.state.totalCards) Object.assign(this.state, { phase: "playing", round: 1, currentPlayer: 0, deck, passes: Object.fromEntries(this.state.players.map((player) => [player.id, this.state.passLimit])), card: null, revealedBy: null, miniGame: null, responses: {}, votes: {}, voteRevealed: false, voteWinners: [], turnResult: null, confirmed: false });
-      }
-      if (msg.type === "pause" && isHost && this.state.phase !== "lobby" && this.state.phase !== "finished") this.state.phase = this.state.phase === "paused" ? "playing" : "paused";
-      if (msg.type === "revealCard" && this.state.phase === "playing" && !this.state.card && this.currentPlayerId() === playerId) {
-        this.state.card = this.state.deck[this.state.round - 1] ?? null; this.state.revealedBy = playerId;
-        if (this.state.card?.kind === "digital") this.createMini(String(this.state.card.game), playerId);
-      }
-      if (msg.type === "selectMiniOpponent" && this.state.miniGame?.phase === "selecting" && this.state.miniGame.challengerId === playerId) {
-        const opponent = this.state.players.find((p) => p.id === msg.opponentId && p.id !== playerId && p.connected);
-        if (opponent) { this.state.miniGame.opponentId = opponent.id; this.state.miniGame.participantIds = [playerId, opponent.id]; this.state.miniGame.phase = "ready"; }
-      }
-      if (msg.type === "miniReady" && this.state.miniGame?.phase === "ready" && this.isMiniPlayer(playerId) && this.connectedParticipantIds().includes(playerId)) {
-        if (!this.state.miniGame.readyIds.includes(playerId)) this.state.miniGame.readyIds.push(playerId);
-        if (this.connectedParticipantIds().every((id) => this.state.miniGame!.readyIds.includes(id))) this.startMiniGame();
-      }
-      if (msg.type === "miniAction" && ["countdown", "playing"].includes(this.state.miniGame?.phase ?? "") && this.isMiniPlayer(playerId)) this.handleMiniAction(playerId, String(msg.action), msg.value);
-      if (msg.type === "restartMini" && isHost && this.state.miniGame) this.resetMini();
-      if (msg.type === "cancelMini" && isHost && this.state.miniGame && !this.state.confirmed) {
-        this.state.miniGame.phase = "result"; this.state.miniGame.winners = []; this.state.miniGame.losers = []; this.state.miniGame.details = { reason: "cancelled" };
-      }
-      if (msg.type === "confirmMini" && isHost && this.state.miniGame?.phase === "result" && !this.state.miniGame.confirmed) this.confirmMiniResult();
-      if (msg.type === "answer" && this.state.phase === "playing" && this.state.card && this.state.card.kind !== "digital" && !this.state.confirmed) this.state.responses[playerId] = Boolean(msg.drank);
-      if (msg.type === "vote" && this.state.card?.kind === "vote" && !this.state.voteRevealed) this.recordVote(playerId, msg.selections);
-      const connectedIds = this.activePlayerIds();
-      const everyoneVoted = connectedIds.every((id) => id in this.state.votes);
-      if (msg.type === "revealVotes" && isHost && everyoneVoted && this.state.card?.kind === "vote" && !this.state.voteRevealed) this.revealVotes(connectedIds);
-      const everyoneAnswered = connectedIds.every((id) => id in this.state.responses);
-      if (msg.type === "confirm" && isHost && everyoneAnswered && !this.state.confirmed && this.state.card?.kind !== "vote" && this.state.card?.kind !== "digital") this.confirmAnswers(connectedIds);
-      if (msg.type === "shots" && isHost) this.state.players = this.state.players.map((p) => ({ ...p, shots: Math.max(0, Number(msg.shots?.[p.id] ?? p.shots)) }));
-      if (msg.type === "next" && isHost && this.state.players.length && this.state.confirmed) this.advanceTurn();
-      if (msg.type === "skip" && this.state.phase === "playing" && this.state.card && !this.state.confirmed && this.currentPlayerId() === playerId && (this.state.passes[playerId] ?? 0) > 0) { this.state.passes[playerId] -= 1; this.advanceTurn(true); }
-      if (msg.type === "transfer" && isHost && this.state.players.some((p) => p.id === msg.playerId)) this.state.hostId = msg.playerId;
-      if (msg.type === "kick" && isHost && msg.playerId !== playerId) this.state.players = this.state.players.filter((p) => p.id !== msg.playerId);
-      if (msg.type === "endGame" && isHost && this.state.phase !== "lobby") this.state.phase = "finished";
-      await this.scheduleAlarm(); await this.saveAndBroadcast();
-    } catch { ws.send(JSON.stringify({ type: "error", message: "Geçersiz mesaj" })); }
+  private configure(msg:Record<string,unknown>){
+    if(msg.totalCards===null)this.state.totalCards=null;else if(msg.totalCards!==undefined)this.state.totalCards=Math.max(this.state.phase==="lobby"?10:this.state.round,Math.min(500,Math.floor(Number(msg.totalCards)||30)));
+    if(msg.passLimit!==undefined){this.state.passLimit=Number(msg.passLimit)===1?1:2;if(this.state.phase==="lobby")for(const p of this.state.players)this.state.passes[p.id]=this.state.passLimit;}
+    if(Array.isArray(msg.categories)){const selected=[...new Set(msg.categories.map(String))].filter((v):v is Category=>categories.includes(v as Category));if(selected.length){for(const kind of selected)if(this.state.settings.categoryWeights[kind]<=0)this.state.settings.categoryWeights[kind]=defaultSettings().categoryWeights[kind];this.state.activeCategories=selected;this.normalizeWeights();}}
+    if(msg.categoryWeights&&typeof msg.categoryWeights==="object"){const next={...this.state.settings.categoryWeights};for(const kind of categories)next[kind]=Math.max(0,Math.min(100,Math.round(Number((msg.categoryWeights as Record<string,unknown>)[kind]??next[kind]))));const total=this.state.activeCategories.reduce((sum,k)=>sum+next[k],0);if(total===100)this.state.settings.categoryWeights=next;}
+    if(["light","normal","hard"].includes(String(msg.contentLevel)))this.state.settings.contentLevel=msg.contentLevel as RoomSettings["contentLevel"];
+    if(Array.isArray(msg.activeMiniGames)){const selected=[...new Set(msg.activeMiniGames.map(String))].filter((v):v is MiniKind=>miniKinds.includes(v as MiniKind));this.state.settings.activeMiniGames=selected;}
+    const booleans:(keyof RoomSettings)[]=["digitalTwoPlayer","digitalGroup","preventMiniRepeat","preventOpponentRepeat","allowPhoneCards","allowTrivia","allowGroupVoteDuels","showVoteDistribution","allowSelfVote","requireHostConfirm","autoConfirm","autoAdvance"];
+    for(const key of booleans)if(typeof msg[key]==="boolean")(this.state.settings[key] as boolean)=msg[key] as boolean;
+    if(["opener","system"].includes(String(msg.duelOpponentMode)))this.state.settings.duelOpponentMode=msg.duelOpponentMode as "opener"|"system";
+    if(["secret","open"].includes(String(msg.votePrivacy)))this.state.settings.votePrivacy=msg.votePrivacy as "secret"|"open";
+    if(["all","winner"].includes(String(msg.voteResultMode)))this.state.settings.voteResultMode=msg.voteResultMode as "all"|"winner";
+    if(["drink","revote"].includes(String(msg.voteTie)))this.state.settings.voteTie=msg.voteTie as "drink"|"revote";
   }
-
-  async webSocketClose(ws: WebSocket) { await this.disconnect(ws); }
-  async webSocketError(ws: WebSocket) { await this.disconnect(ws); }
-
-  async alarm() {
-    const now = Date.now();
-    for (const [id, deadline] of Object.entries(this.state.disconnectDeadlines)) {
-      if (deadline > now) continue;
-      delete this.state.disconnectDeadlines[id];
-      const mini = this.state.miniGame;
-      if (mini && mini.participantIds.includes(id) && !mini.submissions[id] && mini.phase !== "result") mini.submissions[id] = { value: "disconnected", at: now, valid: false };
-    }
-    const mini = this.state.miniGame;
-    if (mini && mini.phase !== "result" && mini.endsAt && now >= mini.endsAt + 2500) {
-      for (const id of mini.participantIds) if (!mini.submissions[id]) mini.submissions[id] = { value: "timeout", at: now, valid: false };
-      this.evaluateMini(true);
-    }
-    await this.scheduleAlarm(); await this.saveAndBroadcast();
+  private normalizeWeights(){const active=this.state.activeCategories,current=this.state.settings.categoryWeights,total=active.reduce((sum,key)=>sum+Math.max(0,current[key]),0);let remaining=100;active.forEach((key,index)=>{const value=index===active.length-1?remaining:Math.round((total?current[key]/total:1/active.length)*100);current[key]=Math.max(0,value);remaining-=current[key];});for(const key of categories)if(!active.includes(key))current[key]=0;}
+  private sanitizeCards(raw:unknown[]):GameCard[]{const seen=new Set<number>();return raw.map(item=>item as Partial<GameCard>).filter(card=>{const id=Number(card.id);if(!Number.isInteger(id)||seen.has(id)||!categories.includes(card.kind as Category))return false;seen.add(id);return true;}).map(card=>({id:Number(card.id),kind:card.kind as Category,game:miniKinds.includes(card.game as MiniKind)?card.game as MiniKind:undefined,level:["light","normal","hard"].includes(String(card.level))?card.level:"normal",maxSelections:Number(card.maxSelections)||undefined,outcome:typeof card.outcome==="string"?card.outcome:undefined,requiresPhone:Boolean(card.requiresPhone),trivia:Boolean(card.trivia),groupVote:Boolean(card.groupVote)}));}
+  private eligibleCards(kind:Category){let list=this.state.cardPool.filter(c=>c.kind===kind);
+    if(kind==="digital")list=list.filter(c=>c.game&&this.state.settings.activeMiniGames.includes(c.game)&&(twoPlayerGames.has(c.game)?this.state.settings.digitalTwoPlayer:this.state.settings.digitalGroup));
+    if(kind==="duel")list=list.filter(c=>(this.state.settings.allowPhoneCards||!c.requiresPhone)&&(this.state.settings.allowTrivia||!c.trivia)&&(this.state.settings.allowGroupVoteDuels||!c.groupVote));
+    const exact=list.filter(c=>c.level===this.state.settings.contentLevel);if(exact.length)list=exact;return list;
   }
-
-  private buildWeightedDeck(pool: GameCard[], total: number) {
-    const grouped: Record<string, GameCard[]> = {};
-    for (const kind of this.state.activeCategories) grouped[kind] = pool.filter((card) => card.kind === kind);
-    const queues = Object.fromEntries(Object.entries(grouped).map(([kind, list]) => [kind, shuffle(list)])) as Record<string, GameCard[]>;
-    const lastCard: Record<string, number | undefined> = {};
-    const deck: GameCard[] = []; const kinds: string[] = [];
-    while (deck.length < total) {
-      let candidates = this.state.activeCategories.filter((kind) => grouped[kind]?.length);
-      const previous = kinds.at(-1); const previousTwo = kinds.at(-2);
-      const strict = candidates.filter((kind) => !(kind === previous && kind === previousTwo) && !(["digital", "duel"].includes(kind) && ["digital", "duel"].includes(previous ?? "")));
-      if (strict.length) candidates = strict;
-      const weightTotal = candidates.reduce((sum, kind) => sum + CATEGORY_WEIGHTS[kind], 0);
-      let roll = Math.random() * weightTotal; let chosen = candidates[0];
-      for (const kind of candidates) { roll -= CATEGORY_WEIGHTS[kind]; if (roll <= 0) { chosen = kind; break; } }
-      if (!queues[chosen].length) {
-        queues[chosen] = shuffle(grouped[chosen]);
-        if (queues[chosen].length > 1 && queues[chosen][0].id === lastCard[chosen]) [queues[chosen][0], queues[chosen][1]] = [queues[chosen][1], queues[chosen][0]];
-      }
-      const card = queues[chosen].shift(); if (!card) break;
-      deck.push(card); kinds.push(chosen); lastCard[chosen] = card.id;
-    }
-    return deck;
+  private drawCard(){let kinds=this.state.activeCategories.filter(k=>this.state.settings.categoryWeights[k]>0&&this.eligibleCards(k).length);const prev=this.state.categoryHistory.at(-1),prev2=this.state.categoryHistory.at(-2);const strict=kinds.filter(k=>!(k===prev&&k===prev2)&&!((k==="digital"||k==="duel")&&k===prev));if(strict.length)kinds=strict;if(!kinds.length)return null;let roll=Math.random()*kinds.reduce((sum,k)=>sum+this.state.settings.categoryWeights[k],0),chosen=kinds[0];for(const kind of kinds){roll-=this.state.settings.categoryWeights[kind];if(roll<=0){chosen=kind;break;}}
+    let pool=this.eligibleCards(chosen).filter(c=>!this.state.usedCardIds.includes(c.id));if(chosen==="digital"&&this.state.settings.preventMiniRepeat&&this.state.lastMiniGame){const fresh=pool.filter(c=>c.game!==this.state.lastMiniGame);if(fresh.length)pool=fresh;}
+    if(!pool.length){const ids=new Set(this.eligibleCards(chosen).map(c=>c.id));this.state.usedCardIds=this.state.usedCardIds.filter(id=>!ids.has(id));pool=this.eligibleCards(chosen);if(chosen==="digital"&&this.state.settings.preventMiniRepeat&&this.state.lastMiniGame){const fresh=pool.filter(c=>c.game!==this.state.lastMiniGame);if(fresh.length)pool=fresh;}}
+    const card=pool[randomInt(0,pool.length-1)];if(!card)return null;this.state.usedCardIds.push(card.id);this.state.categoryHistory.push(chosen);this.state.categoryHistory=this.state.categoryHistory.slice(-2);if(card.game)this.state.lastMiniGame=card.game;return card;
   }
+  private prepareDuel(opener:string){const candidates=this.activePlayers().filter(p=>p.id!==opener&&(this.state.settings.preventOpponentRepeat?p.id!==this.state.lastDuelOpponent:true));const fallback=this.activePlayers().filter(p=>p.id!==opener);if(this.state.settings.duelOpponentMode==="system"){const target=(candidates.length?candidates:fallback)[randomInt(0,Math.max(0,(candidates.length?candidates:fallback).length-1))];if(target){this.state.duelOpponentId=target.id;this.state.lastDuelOpponent=target.id;}}}
 
-  private createMini(gameName: string, challengerId: string) {
-    const game = MINI_GAMES.has(gameName) ? gameName : "reflex";
-    const trust = game === "trust";
-    this.state.miniGame = { game, phase: trust ? "selecting" : "ready", challengerId, opponentId: null, participantIds: trust ? [challengerId] : this.activePlayerIds(), readyIds: [], startedAt: null, triggerAt: null, endsAt: null, challenge: {}, submissions: {}, winners: [], losers: [], rankings: [], details: {}, confirmed: false };
-  }
-
-  private resetMini() {
-    const old = this.state.miniGame!; this.createMini(old.game, old.challengerId);
-    if (old.game === "trust" && old.opponentId && this.state.players.some((p) => p.id === old.opponentId && p.connected)) {
-      const mini = this.state.miniGame!; mini.opponentId = old.opponentId; mini.participantIds = [old.challengerId, old.opponentId]; mini.phase = "ready";
-    }
-  }
-
-  private makeChallenge(game: string) {
-    if (game === "odd_one") return { targetIndex: randomInt(0, 23), normal: "●", odd: "◉" };
-    if (game === "emoji_memory") {
-      const sequence = shuffle(["🍋", "🦊", "🎲", "🚀", "🌵", "🎧", "🍕", "🐙", "🌙", "⚡"]).slice(0, 4);
-      const options = shuffle(sequence); if (options.join("") === sequence.join("")) [options[0], options[1]] = [options[1], options[0]];
-      return { sequence, options };
-    }
-    if (game === "follow_target") {
-      const targetId = randomInt(0, 5); const path = Array.from({ length: 5 }, () => shuffle([0, 1, 2, 3, 4, 5]));
-      return { targetId, path, finalIndex: path.at(-1)?.indexOf(targetId) ?? targetId };
-    }
-    if (game === "quick_math") {
-      const a = randomInt(3, 18), b = randomInt(2, 12), operation = randomInt(0, 2);
-      const correct = operation === 0 ? a + b : operation === 1 ? a - b : a * b;
-      const symbol = operation === 0 ? "+" : operation === 1 ? "−" : "×";
-      const optionSet = new Set<number>([correct]);
-      while (optionSet.size < 4) { const candidate = correct + randomInt(-8, 8); optionSet.add(candidate === correct ? correct + optionSet.size : candidate); }
-      const options = shuffle([...optionSet]);
-      return { question: `${a} ${symbol} ${b}`, options: shuffle(options), correct };
-    }
-    if (game === "color_word") {
-      const colors = [{ key: "red", label: "KIRMIZI", hex: "#ff5268" }, { key: "blue", label: "MAVİ", hex: "#39bdf8" }, { key: "green", label: "YEŞİL", hex: "#43d17d" }, { key: "yellow", label: "SARI", hex: "#ffd452" }];
-      let word = colors[randomInt(0, colors.length - 1)]; let ink = colors[randomInt(0, colors.length - 1)]; if (ink.key === word.key) ink = colors[(colors.indexOf(ink) + 1) % colors.length];
-      let mode = Math.random() < .5 ? "meaning" : "ink"; let combo = `${word.key}-${ink.key}-${mode}`;
-      if (combo === this.state.lastColorCombo) { word = colors[(colors.indexOf(word) + 1) % colors.length]; if (word.key === ink.key) ink = colors[(colors.indexOf(ink) + 1) % colors.length]; mode = mode === "meaning" ? "ink" : "meaning"; combo = `${word.key}-${ink.key}-${mode}`; }
-      this.state.lastColorCombo = combo;
-      return { word: word.label, ink: ink.hex, task: mode === "meaning" ? "Kelimenin anlamını seç" : "Yazının rengini seç", correct: mode === "meaning" ? word.key : ink.key, options: colors };
-    }
-    if (game === "number_memory") return { sequence: shuffle([0,1,2,3,4,5,6,7,8,9]).slice(0, 5) };
+  private createMini(game:MiniKind,challengerId:string){const two=twoPlayerGames.has(game);this.state.miniGame={game,phase:two?"selecting":"ready",challengerId,opponentId:null,participantIds:two?[challengerId]:this.activePlayerIds(),readyIds:[],startedAt:null,triggerAt:null,endsAt:null,challenge:{},secret:{},submissions:{},winners:[],losers:[],rankings:[],details:{},confirmed:false};}
+  private resetMini(){const old=this.state.miniGame!;this.createMini(old.game,old.challengerId);if(twoPlayerGames.has(old.game)&&old.opponentId&&this.player(old.opponentId)?.connected){const mini=this.state.miniGame!;mini.opponentId=old.opponentId;mini.participantIds=[old.challengerId,old.opponentId];mini.phase="ready";}}
+  private excludeMiniPlayer(id:string){const mini=this.state.miniGame!;if(!mini.participantIds.includes(id)||mini.participantIds.length<=2)return;mini.participantIds=mini.participantIds.filter(x=>x!==id);mini.readyIds=mini.readyIds.filter(x=>x!==id);delete mini.submissions[id];if(mini.phase==="ready"&&mini.participantIds.every(x=>mini.readyIds.includes(x)))this.startMini();else this.evaluateMini(false);}
+  private makeChallenge(game:MiniKind){
+    if(game==="odd_one"){const regions=[[0,1,6,7],[4,5,10,11],[18,19,12,13],[22,23,16,17],[8,9,14,15,2,3,20,21]];let choices=regions[this.state.oddRegionCursor%regions.length].filter(index=>index!==this.state.lastOddPosition);if(!choices.length)choices=regions[this.state.oddRegionCursor%regions.length];const targetIndex=choices[randomInt(0,choices.length-1)];this.state.lastOddPosition=targetIndex;this.state.oddRegionCursor=(this.state.oddRegionCursor+1)%regions.length;return {targetIndex,normal:"○",odd:"◉"};}
+    if(game==="emoji_memory"){const sequence=shuffle(["circle","triangle","square","diamond","star","plus","wave","moon"]).slice(0,4);const options=shuffle(sequence);if(options.join()===sequence.join())[options[0],options[1]]=[options[1],options[0]];return {sequence,options};}
+    if(game==="quick_math"){const operation=randomInt(0,3);let a=randomInt(3,20),b=randomInt(2,12),correct:number,symbol:string;if(operation===0){correct=a+b;symbol="+";}else if(operation===1){if(b>a)[a,b]=[b,a];correct=a-b;symbol="−";}else if(operation===2){a=randomInt(2,12);b=randomInt(2,10);correct=a*b;symbol="×";}else{b=randomInt(2,9);correct=randomInt(2,12);a=b*correct;symbol="÷";}const set=new Set<number>([correct]);while(set.size<4){const value=correct+randomInt(-7,7);if(value>=0)set.add(value);}return {question:`${a} ${symbol} ${b}`,options:shuffle([...set]),correct};}
+    if(game==="common_answer"){const prompts=[{key:"color",options:["red","blue","green","yellow","purple","black"]},{key:"animal",options:["cat","dog","fox","lion","panda","owl"]},{key:"drink",options:["water","coffee","tea","soda","juice"]},{key:"season",options:["spring","summer","autumn","winter"]},{key:"country",options:["turkey","italy","japan","spain","brazil","france"]}];return prompts[randomInt(0,prompts.length-1)];}
     return {};
   }
+  private startMini(){const mini=this.state.miniGame!,now=Date.now();mini.phase="countdown";mini.startedAt=now+3000;mini.challenge=this.makeChallenge(mini.game);mini.secret={};mini.submissions={};mini.winners=[];mini.losers=[];mini.rankings=[];mini.details={};mini.triggerAt=mini.game==="reflex"?mini.startedAt+randomInt(2000,6000):null;
+    const durations:Record<MiniKind,number>={odd_one:12000,reflex:14000,rapid_tap:5000,five_seconds:12000,emoji_memory:15000,trust:20000,quick_math:12000,xox:60000,bomb:16000,common_answer:15000};mini.endsAt=mini.startedAt+durations[mini.game];
+    if(mini.game==="xox"){const current=mini.participantIds[randomInt(0,1)];mini.challenge={board:Array(9).fill(null),currentTurnId:current,symbols:{[mini.participantIds[0]]:"X",[mini.participantIds[1]]:"O"},moveDeadline:mini.startedAt+5000};mini.secret.moveDeadline=mini.startedAt+5000;}
+    if(mini.game==="bomb"){const holder=mini.participantIds[randomInt(0,mini.participantIds.length-1)],explodeAt=mini.startedAt+randomInt(8000,15000);mini.secret={explodeAt,lastHolderId:null};mini.challenge={holderId:holder,passDeadline:mini.startedAt+3000,passLocked:false};mini.endsAt=explodeAt;}
+  }
+  private handleMiniAction(playerId:string,action:string,value:unknown){const mini=this.state.miniGame!,now=Date.now(),started=mini.startedAt??now;
+    if(mini.game==="xox"&&action==="move"&&now>=started&&mini.challenge.currentTurnId===playerId){const index=Math.floor(Number(value)),board=[...(mini.challenge.board as Array<string|null>)];if(index<0||index>8||board[index]||now>Number(mini.secret.moveDeadline))return;board[index]=(mini.challenge.symbols as Record<string,string>)[playerId];mini.challenge.board=board;if(this.xoxWon(board,String(board[index]))){const loser=mini.participantIds.find(id=>id!==playerId)!;this.finishMini([playerId],[loser],[playerId,loser],{board});return;}if(board.every(Boolean)){this.finishMini([],mini.participantIds,mini.participantIds,{board,draw:true});return;}const next=mini.participantIds.find(id=>id!==playerId)!;mini.challenge.currentTurnId=next;mini.challenge.moveDeadline=now+5000;mini.secret.moveDeadline=now+5000;return;}
+    if(mini.game==="bomb"&&action==="pass"&&now>=started&&mini.challenge.holderId===playerId&&!mini.challenge.passLocked&&now<=Number(mini.challenge.passDeadline)){const target=String(value),last=mini.secret.lastHolderId;if(!mini.participantIds.includes(target)||target===playerId||target===last)return;mini.secret.lastHolderId=playerId;mini.challenge.holderId=target;mini.challenge.passDeadline=Math.min(now+3000,Number(mini.secret.explodeAt));mini.challenge.passLocked=false;return;}
+    if(mini.submissions[playerId]||now<started)return;let accepted=false,normalized=value,valid=true;
+    if(mini.game==="reflex"&&action==="tap"){normalized=now<(mini.triggerAt??now)?-1:now-(mini.triggerAt??now);valid=Number(normalized)>=0;accepted=true;}
+    if(mini.game==="rapid_tap"&&action==="finish"&&now>=(mini.endsAt??now)-400&&now<=(mini.endsAt??now)+3000){const taps=Math.floor(Number(value));normalized=Number.isFinite(taps)&&taps>=0&&taps<=150?taps:0;valid=taps>=0&&taps<=150;accepted=true;}
+    if(mini.game==="five_seconds"&&action==="stop"){normalized=now-started;accepted=true;}
+    if(mini.game==="odd_one"&&action==="answer"){normalized=Math.floor(Number(value));accepted=true;}
+    if(mini.game==="emoji_memory"&&action==="answer"&&Array.isArray(value)){normalized=value.slice(0,4).map(String);accepted=true;}
+    if(mini.game==="quick_math"&&action==="answer"){normalized=Number(value);accepted=true;}
+    if(mini.game==="trust"&&action==="choice"&&(value==="trust"||value==="betray")){accepted=true;}
+    if(mini.game==="common_answer"&&action==="answer"&&(mini.challenge.options as string[]).includes(String(value))){normalized=String(value);accepted=true;}
+    if(!accepted)return;mini.submissions[playerId]={value:normalized,at:now,valid};this.evaluateMini(false);
+  }
+  private xoxWon(board:Array<string|null>,symbol:string){return [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].some(line=>line.every(index=>board[index]===symbol));}
+  private evaluateMini(force:boolean){const mini=this.state.miniGame!;if(mini.phase==="result"||["xox","bomb"].includes(mini.game))return;if(!force&&mini.participantIds.some(id=>!mini.submissions[id]))return;for(const id of mini.participantIds)if(!mini.submissions[id])mini.submissions[id]={value:"timeout",at:Date.now(),valid:false};const ids=mini.participantIds,values=Object.fromEntries(ids.map(id=>[id,mini.submissions[id].value]));
+    if(mini.game==="trust"){const [a,b]=ids,av=values[a],bv=values[b];if(av==="trust"&&bv==="trust")this.finishMini([],[],ids,{choices:values});else if(av==="betray"&&bv==="betray")this.finishMini([],ids,ids,{choices:values});else if(av==="betray"&&bv==="trust")this.finishMini([a],[b],[a,b],{choices:values});else if(av==="trust"&&bv==="betray")this.finishMini([b],[a],[b,a],{choices:values});else this.finishMini([],ids.filter(id=>!mini.submissions[id].valid),ids,{choices:values});return;}
+    if(mini.game==="rapid_tap"){const score=(id:string)=>mini.submissions[id].valid?Number(values[id]):-1,ranked=[...ids].sort((a,b)=>score(b)-score(a)),min=Math.min(...ids.map(score));this.finishMini(ranked.filter(id=>score(id)>min),ids.filter(id=>score(id)===min),ranked,{taps:values});return;}
+    if(mini.game==="five_seconds"){const error=(id:string)=>mini.submissions[id].valid?Math.abs(5000-Number(values[id])):Infinity,ranked=[...ids].sort((a,b)=>error(a)-error(b)),worst=Math.max(...ids.map(error));this.finishMini(ranked.filter(id=>error(id)<worst),ids.filter(id=>error(id)===worst),ranked,{times:values});return;}
+    if(mini.game==="reflex"){const time=(id:string)=>mini.submissions[id].valid?Number(values[id]):Infinity,valid=ids.filter(id=>Number.isFinite(time(id))),early=ids.filter(id=>!Number.isFinite(time(id))),slowest=valid.length>1?Math.max(...valid.map(time)):-1,losers=[...new Set([...early,...valid.filter(id=>time(id)===slowest)])],ranked=[...ids].sort((a,b)=>time(a)-time(b));this.finishMini(ranked.filter(id=>!losers.includes(id)),losers,ranked,{times:values});return;}
+    if(mini.game==="common_answer"){const counts:Record<string,number>={};ids.filter(id=>mini.submissions[id].valid).forEach(id=>counts[String(values[id])]=(counts[String(values[id])]??0)+1);const used=Object.values(counts),max=Math.max(0,...used),allSame=used.length===1,allEqual=used.length>1&&new Set(used).size===1;const losers=allSame?[]:allEqual?[...ids]:ids.filter(id=>!mini.submissions[id].valid||counts[String(values[id])]<max);this.finishMini(ids.filter(id=>!losers.includes(id)),losers,[...ids].sort((a,b)=>(counts[String(values[b])]??0)-(counts[String(values[a])]??0)),{choices:values,counts});return;}
+    const correct=(id:string)=>{if(!mini.submissions[id].valid)return false;if(mini.game==="odd_one")return Number(values[id])===Number(mini.challenge.targetIndex);if(mini.game==="quick_math")return Number(values[id])===Number(mini.challenge.correct);return Array.isArray(values[id])&&(values[id] as unknown[]).map(String).join("|")===(mini.challenge.sequence as unknown[]).map(String).join("|");};
+    const correctIds=ids.filter(correct),wrong=ids.filter(id=>!correct(id)),speed=(id:string)=>mini.submissions[id].at-(mini.startedAt??mini.submissions[id].at),slowest=correctIds.length>1?Math.max(...correctIds.map(speed)):-1;let losers=wrong.length===ids.length?[...ids]:[...wrong,...correctIds.filter(id=>speed(id)===slowest)];if(ids.length===2&&wrong.length===1)losers=wrong;const ranked=[...correctIds].sort((a,b)=>speed(a)-speed(b)).concat(wrong);this.finishMini(ranked.filter(id=>!losers.includes(id)),[...new Set(losers)],ranked,{answers:values,times:Object.fromEntries(ids.map(id=>[id,speed(id)]))});
+  }
+  private finishMini(winners:string[],losers:string[],rankings:string[],details:Record<string,unknown>){const mini=this.state.miniGame!;mini.phase="result";mini.winners=winners;mini.losers=losers;mini.rankings=rankings;mini.details=details;if(this.shouldAutoConfirm())this.confirmMini();}
+  private confirmMini(){const mini=this.state.miniGame!;mini.confirmed=true;this.applyResult(mini.losers,this.activePlayerIds().filter(id=>!mini.losers.includes(id)),`mini:${mini.game}`);}
 
-  private startMiniGame() {
-    const mini = this.state.miniGame!; const now = Date.now();
-    mini.phase = "countdown"; mini.challenge = this.makeChallenge(mini.game); mini.submissions = {}; mini.winners = []; mini.losers = []; mini.rankings = []; mini.details = {};
-    mini.startedAt = now + 3000;
-    mini.triggerAt = mini.game === "reflex" ? mini.startedAt + randomInt(2000, 6000) : null;
-    const durations: Record<string, number> = { rapid_tap: 5000, reflex: 14000, five_seconds: 12000, emoji_memory: 15000, odd_one: 12000, trust: 20000, follow_target: 12000, quick_math: 12000, color_word: 12000, number_memory: 15000 };
-    mini.endsAt = mini.startedAt + (durations[mini.game] ?? 15000);
-  }
+  private recordVote(playerId:string,selections:unknown){const max=Math.max(1,Math.min(2,this.activePlayerIds().length-(this.state.settings.allowSelfVote?0:1),Number(this.state.card?.maxSelections??1))),valid=new Set(this.activePlayerIds().filter(id=>this.state.settings.allowSelfVote||id!==playerId)),picked=[...new Set(Array.isArray(selections)?selections.map(String):[])].filter(id=>valid.has(id)).slice(0,max);if(picked.length===max)this.state.votes[playerId]=picked;}
+  private everyoneVoted(){const ids=this.activePlayerIds();return ids.length>0&&ids.every(id=>id in this.state.votes);}private everyoneAnswered(){const ids=this.activePlayerIds();return ids.length>0&&ids.every(id=>id in this.state.responses);}
+  private maybeAutoRevealVotes(){if(this.everyoneVoted()&&this.shouldAutoConfirm())this.revealVotes();}
+  private revealVotes(){const tally:Record<string,number>={};Object.values(this.state.votes).flat().forEach(id=>tally[id]=(tally[id]??0)+1);const ids=this.activePlayerIds(),counts=ids.map(id=>tally[id]??0),top=Math.max(0,...counts),bottom=Math.min(...counts),topIds=ids.filter(id=>(tally[id]??0)===top),outcome=this.state.card?.outcome??"highest";if(outcome==="highest"&&topIds.length>1&&this.state.settings.voteTie==="revote"){this.state.votes={};this.state.voteRound+=1;return;}if(outcome==="lowest")this.state.voteWinners=ids.filter(id=>(tally[id]??0)===bottom);else if(outcome==="zero")this.state.voteWinners=ids.filter(id=>!tally[id]);else if(outcome==="except_top")this.state.voteWinners=ids.filter(id=>!topIds.includes(id));else this.state.voteWinners=top?topIds:[];this.state.voteRevealed=true;const drinkers=outcome==="winner_chooses"?[]:this.state.voteWinners;this.applyResult(drinkers,ids.filter(id=>!drinkers.includes(id)),"vote");}
+  private maybeAutoConfirmAnswers(){if(this.everyoneAnswered()&&this.shouldAutoConfirm())this.confirmAnswers();}
+  private confirmAnswers(){const active=this.activePlayerIds(),drinkers=active.filter(id=>this.state.responses[id]);this.applyResult(drinkers,active.filter(id=>!drinkers.includes(id)),"card");}
+  private shouldAutoConfirm(){return this.state.settings.autoConfirm&&!this.state.settings.requireHostConfirm;}
+  private applyResult(drinkers:string[],nonDrinkers:string[],reason:string){if(this.state.confirmed)return;this.state.lastSnapshot={shots:Object.fromEntries(this.state.players.map(p=>[p.id,p.shots])),turnResult:this.state.turnResult,confirmed:this.state.confirmed,resultAt:this.state.resultAt};this.state.resultPreviousShots=Object.fromEntries(this.state.players.map(p=>[p.id,p.shots]));this.state.players=this.state.players.map(p=>({...p,shots:p.shots+(drinkers.includes(p.id)?1:0)}));this.state.turnResult={drinkers:[...new Set(drinkers)],nonDrinkers:[...new Set(nonDrinkers)],reason};this.state.confirmed=true;this.state.resultAt=Date.now();}
+  private undoResult(){const snap=this.state.lastSnapshot;if(!snap)return;this.state.players=this.state.players.map(p=>({...p,shots:snap.shots[p.id]??p.shots}));this.state.turnResult=snap.turnResult;this.state.confirmed=snap.confirmed;this.state.resultAt=snap.resultAt;if(this.state.miniGame)this.state.miniGame.confirmed=false;this.state.lastSnapshot=null;}
+  private adjustResult(id:string,drinks:boolean){const result=this.state.turnResult;if(!result||!this.player(id))return;const was=result.drinkers.includes(id);if(was===drinks)return;this.state.players=this.state.players.map(p=>p.id===id?{...p,shots:Math.max(0,p.shots+(drinks?1:-1))}:p);result.drinkers=drinks?[...result.drinkers,id]:result.drinkers.filter(x=>x!==id);result.nonDrinkers=drinks?result.nonDrinkers.filter(x=>x!==id):[...result.nonDrinkers,id];this.state.resultAt=Date.now();}
+  private advanceTurn(force=false){if(!force&&!this.state.confirmed)return;if(this.state.totalCards!==null&&this.state.round>=this.state.totalCards){this.state.phase="finished";return;}this.state.round+=1;const active=this.activePlayers();if(active.length){const currentId=this.currentPlayerId(),all=this.state.players,index=all.findIndex(p=>p.id===currentId);for(let i=1;i<=all.length;i++){const candidate=(index+i)%all.length;if(all[candidate]?.connected&&!all[candidate].spectator){this.state.currentPlayer=candidate;break;}}}this.clearTurn();}
+  private resetTurn(clearCard:boolean){if(clearCard)this.state.card=null;this.state.revealedBy=clearCard?null:this.state.revealedBy;this.state.duelOpponentId=null;this.state.miniGame=null;this.state.responses={};this.state.votes={};this.state.voteRevealed=false;this.state.voteWinners=[];this.state.turnResult=null;this.state.confirmed=false;this.state.resultAt=null;this.state.lastSnapshot=null;}
+  private clearTurn(){this.state.card=null;this.state.revealedBy=null;this.resetTurn(true);}
+  private reorderPlayers(ids:string[]){const current=this.currentPlayerId(),map=new Map(this.state.players.map(p=>[p.id,p])),ordered=ids.map(id=>map.get(id)).filter(Boolean) as Player[];for(const p of this.state.players)if(!ids.includes(p.id))ordered.push(p);this.state.players=ordered;this.state.currentPlayer=Math.max(0,ordered.findIndex(p=>p.id===current));}
 
-  private handleMiniAction(playerId: string, action: string, value: unknown) {
-    const mini = this.state.miniGame!; const now = Date.now(); if (mini.submissions[playerId]) return;
-    const started = mini.startedAt ?? now;
-    if (mini.game !== "reflex" && now < started) return;
-    let accepted = false; let normalized: unknown = value; let valid = true;
-    if (mini.game === "reflex" && action === "tap") { normalized = now < (mini.triggerAt ?? now) ? -1 : now - (mini.triggerAt ?? now); valid = Number(normalized) >= 0; accepted = true; }
-    if (mini.game === "rapid_tap" && action === "finish" && now >= (mini.endsAt ?? now) - 350 && now <= (mini.endsAt ?? now) + 3000) { const taps = Math.floor(Number(value)); normalized = Number.isFinite(taps) && taps >= 0 && taps <= 150 ? taps : 0; valid = taps <= 150; accepted = true; }
-    if (mini.game === "five_seconds" && action === "stop") { normalized = now - started; accepted = true; }
-    if (["odd_one", "follow_target", "quick_math", "color_word"].includes(mini.game) && action === "answer") { normalized = typeof value === "string" ? value : Number(value); accepted = true; }
-    if ((mini.game === "emoji_memory" || mini.game === "number_memory") && action === "answer" && Array.isArray(value)) { normalized = value.slice(0, mini.game === "number_memory" ? 5 : 4); accepted = true; }
-    if (mini.game === "trust" && action === "choice" && (value === "trust" || value === "betray")) { normalized = value; accepted = true; }
-    if (!accepted) return;
-    mini.submissions[playerId] = { value: normalized, at: now, valid };
-    this.evaluateMini(false);
-  }
-
-  private evaluateMini(force: boolean) {
-    const mini = this.state.miniGame!; if (mini.phase === "result") return;
-    if (!force && mini.participantIds.some((id) => !mini.submissions[id])) return;
-    for (const id of mini.participantIds) if (!mini.submissions[id]) mini.submissions[id] = { value: "timeout", at: Date.now(), valid: false };
-    const ids = mini.participantIds; const values = Object.fromEntries(ids.map((id) => [id, mini.submissions[id].value]));
-    if (mini.game === "trust") {
-      const [a, b] = ids; const av = values[a], bv = values[b];
-      if (av === "trust" && bv === "trust") this.finishMini([], [], ids, { choices: values });
-      else if (av === "betray" && bv === "betray") this.finishMini([], [a, b], ids, { choices: values });
-      else if (av === "betray" && bv === "trust") this.finishMini([a], [b], [a, b], { choices: values });
-      else if (av === "trust" && bv === "betray") this.finishMini([b], [a], [b, a], { choices: values });
-      else this.finishMini([], ids.filter((id) => !mini.submissions[id].valid), ids, { choices: values });
-      return;
-    }
-    if (mini.game === "rapid_tap") {
-      const score = (id: string) => mini.submissions[id].valid === false ? -1 : Number(values[id]);
-      const ranked = [...ids].sort((a,b) => score(b)-score(a)); const min = Math.min(...ids.map(score));
-      this.finishMini(ranked.filter((id)=>score(id)>min), ids.filter((id)=>score(id)===min), ranked, { taps: values }); return;
-    }
-    if (mini.game === "five_seconds") {
-      const error = (id: string) => mini.submissions[id].valid === false ? Infinity : Math.abs(5000 - Number(values[id]));
-      const ranked = [...ids].sort((a,b)=>error(a)-error(b)); const worst = Math.max(...ids.map(error));
-      this.finishMini(ranked.filter((id)=>error(id)<worst), ids.filter((id)=>error(id)===worst), ranked, { times: values }); return;
-    }
-    if (mini.game === "reflex") {
-      const time = (id: string) => mini.submissions[id].valid === false ? Infinity : Number(values[id]);
-      const validIds = ids.filter((id)=>Number.isFinite(time(id))); const early = ids.filter((id)=>!Number.isFinite(time(id)));
-      const slowest = validIds.length > 1 ? Math.max(...validIds.map(time)) : -1;
-      const losers = [...new Set([...early, ...validIds.filter((id)=>time(id)===slowest)])]; const ranked = [...ids].sort((a,b)=>time(a)-time(b));
-      this.finishMini(ranked.filter((id)=>!losers.includes(id)), losers, ranked, { times: values }); return;
-    }
-    const correct = (id: string) => {
-      if (mini.submissions[id].valid === false) return false;
-      if (mini.game === "odd_one") return Number(values[id]) === Number(mini.challenge.targetIndex);
-      if (mini.game === "follow_target") return Number(values[id]) === Number(mini.challenge.finalIndex);
-      if (mini.game === "quick_math") return Number(values[id]) === Number(mini.challenge.correct);
-      if (mini.game === "color_word") return String(values[id]) === String(mini.challenge.correct);
-      const expected = (mini.challenge.sequence as unknown[]).map(String).join("|");
-      return Array.isArray(values[id]) && (values[id] as unknown[]).map(String).join("|") === expected;
-    };
-    const correctIds = ids.filter(correct), wrongIds = ids.filter((id)=>!correct(id));
-    const speed = (id: string) => mini.submissions[id].at - (mini.startedAt ?? mini.submissions[id].at);
-    const slowest = correctIds.length > 1 ? Math.max(...correctIds.map(speed)) : -1;
-    const losers = wrongIds.length === ids.length ? [...ids] : [...wrongIds, ...correctIds.filter((id)=>speed(id)===slowest)];
-    const ranked = [...correctIds].sort((a,b)=>speed(a)-speed(b)).concat(wrongIds);
-    this.finishMini(ranked.filter((id)=>!losers.includes(id)), [...new Set(losers)], ranked, { answers: values, times: Object.fromEntries(ids.map((id)=>[id, speed(id)])) });
-  }
-
-  private finishMini(winners: string[], losers: string[], rankings: string[], details: Record<string, unknown>) {
-    const mini = this.state.miniGame!; mini.phase = "result"; mini.winners = winners; mini.losers = losers; mini.rankings = rankings; mini.details = details;
-  }
-
-  private confirmMiniResult() {
-    const mini = this.state.miniGame!; mini.confirmed = true;
-    this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (mini.losers.includes(p.id) ? 1 : 0) }));
-    const active = this.activePlayerIds(); this.state.turnResult = { drinkers: mini.losers.filter((id)=>active.includes(id)), nonDrinkers: active.filter((id)=>!mini.losers.includes(id)) };
-    this.state.confirmed = true;
-  }
-
-  private recordVote(playerId: string, selections: unknown) {
-    const max = Math.max(1, Math.min(2, this.state.players.length - 1, Number(this.state.card?.maxSelections ?? 1)));
-    const validIds = new Set(this.state.players.filter((p) => p.id !== playerId).map((p) => p.id));
-    const picked = [...new Set<string>(Array.isArray(selections) ? selections.map(String) : [])].filter((id) => validIds.has(id)).slice(0, max);
-    if (picked.length === max) this.state.votes[playerId] = picked;
-  }
-
-  private revealVotes(connectedIds: string[]) {
-    const tally: Record<string, number> = {}; Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
-    const counts = this.state.players.map((p) => tally[p.id] ?? 0); const top = Math.max(0, ...counts), bottom = Math.min(...counts);
-    const topIds = this.state.players.filter((p) => (tally[p.id] ?? 0) === top).map((p) => p.id); const outcome = this.state.card?.outcome ?? "highest";
-    if (outcome === "lowest") this.state.voteWinners = this.state.players.filter((p) => (tally[p.id] ?? 0) === bottom).map((p) => p.id);
-    else if (outcome === "zero") this.state.voteWinners = this.state.players.filter((p) => !tally[p.id]).map((p) => p.id);
-    else if (outcome === "except_top") this.state.voteWinners = this.state.players.filter((p) => !topIds.includes(p.id)).map((p) => p.id);
-    else if (outcome === "tie_all") this.state.voteWinners = new Set(counts).size === 1 ? this.state.players.map((p) => p.id) : [];
-    else this.state.voteWinners = top ? topIds : [];
-    const appliesShot = outcome !== "winner_chooses";
-    this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (appliesShot && this.state.voteWinners.includes(p.id) ? 1 : 0) }));
-    const drinkers = appliesShot ? this.state.voteWinners.filter((id) => connectedIds.includes(id)) : [];
-    this.state.turnResult = { drinkers, nonDrinkers: connectedIds.filter((id) => !drinkers.includes(id)) }; this.state.voteRevealed = true; this.state.confirmed = true;
-  }
-
-  private confirmAnswers(active: string[]) {
-    this.state.players = this.state.players.map((p) => ({ ...p, shots: p.shots + (this.state.responses[p.id] ? 1 : 0) }));
-    this.state.turnResult = { drinkers: active.filter((id) => this.state.responses[id]), nonDrinkers: active.filter((id) => !this.state.responses[id]) }; this.state.confirmed = true;
-  }
-
-  private advanceTurn(skipped = false) {
-    if (!skipped && !this.state.confirmed) return;
-    if (this.state.round >= this.state.totalCards) { this.state.phase = "finished"; return; }
-    this.state.round += 1; this.state.currentPlayer = (this.state.currentPlayer + 1) % this.state.players.length;
-    this.state.card = null; this.state.revealedBy = null; this.state.miniGame = null; this.state.responses = {}; this.state.votes = {}; this.state.voteRevealed = false; this.state.voteWinners = []; this.state.turnResult = null; this.state.confirmed = false;
-  }
-
-  private async disconnect(ws: WebSocket) {
-    const { playerId } = (ws.deserializeAttachment() || {}) as { playerId?: string }; if (!playerId) return;
-    const hasAnother = this.ctx.getWebSockets().some((socket) => { const meta = socket.deserializeAttachment() as { playerId?: string } | null; return socket !== ws && socket.readyState === WebSocket.OPEN && meta?.playerId === playerId; });
-    if (hasAnother) return;
-    this.setConnected(playerId, false); this.state.disconnectDeadlines[playerId] = Date.now() + 12000; this.ensureHost(); await this.scheduleAlarm(); await this.saveAndBroadcast();
-  }
-
-  private currentPlayerId() { return this.state.players[this.state.currentPlayer]?.id; }
-  private activePlayerIds() { return this.state.players.filter((p) => p.connected).map((p) => p.id); }
-  private connectedParticipantIds() { const mini = this.state.miniGame; return mini ? mini.participantIds.filter((id)=>this.state.players.some((p)=>p.id===id&&p.connected)) : []; }
-  private isMiniPlayer(id: string) { return Boolean(this.state.miniGame?.participantIds.includes(id)); }
-  private setConnected(id: string, connected: boolean) { const player = this.state.players.find((p) => p.id === id); if (player) player.connected = connected; }
-  private ensureHost() { const host = this.state.players.find((p) => p.id === this.state.hostId); if (!host?.connected) this.state.hostId = this.state.players.find((p) => p.connected)?.id ?? this.state.players[0]?.id ?? null; }
-  private async scheduleAlarm() {
-    const times = Object.values(this.state.disconnectDeadlines);
-    if (this.state.miniGame?.phase !== "result" && this.state.miniGame?.endsAt) times.push(this.state.miniGame.endsAt + 2500);
-    if (times.length) await this.ctx.storage.setAlarm(Math.min(...times)); else await this.ctx.storage.deleteAlarm();
-  }
-  private publicState(viewerId?: string) {
-    const tally: Record<string, number> = {}; if (this.state.voteRevealed) Object.values(this.state.votes).flat().forEach((id) => tally[id] = (tally[id] ?? 0) + 1);
-    const { votes: _votes, deck: _deck, disconnectDeadlines: _deadlines, ...safe } = this.state;
-    const miniGame = this.state.miniGame ? { ...this.state.miniGame, submissions: this.state.miniGame.phase === "result" ? this.state.miniGame.submissions : {}, submittedIds: Object.keys(this.state.miniGame.submissions) } : null;
-    return { ...safe, miniGame, playerCount: this.state.players.length, votedPlayerIds: Object.keys(this.state.votes), myVote: viewerId ? this.state.votes[viewerId] ?? [] : [], voteTally: tally };
-  }
-  private async saveAndBroadcast() {
-    await this.ctx.storage.put("state", this.state);
-    for (const socket of this.ctx.getWebSockets()) try { const meta = socket.deserializeAttachment() as { playerId?: string } | null; socket.send(JSON.stringify({ type: "state", state: this.publicState(meta?.playerId) })); } catch { /* closed */ }
-  }
+  private async disconnect(ws:WebSocket){const {playerId}=(ws.deserializeAttachment()||{}) as {playerId?:string};if(!playerId)return;const another=this.ctx.getWebSockets().some(socket=>{const meta=socket.deserializeAttachment() as {playerId?:string}|null;return socket!==ws&&socket.readyState===WebSocket.OPEN&&meta?.playerId===playerId;});if(another)return;this.setConnected(playerId,false);this.state.disconnectDeadlines[playerId]=Date.now()+12000;this.ensureHost();await this.scheduleAlarm();await this.saveAndBroadcast();}
+  private player(id:string){return this.state.players.find(p=>p.id===id);}private setConnected(id:string,value:boolean){const p=this.player(id);if(p)p.connected=value;}private isSpectator(id:string){return Boolean(this.player(id)?.spectator);}private activePlayers(){return this.state.players.filter(p=>p.connected&&!p.spectator);}private activePlayerIds(){return this.activePlayers().map(p=>p.id);}private currentPlayerId(){return this.state.players[this.state.currentPlayer]?.id;}private isMiniPlayer(id:string){return Boolean(this.state.miniGame?.participantIds.includes(id));}
+  private ensureHost(){const host=this.player(this.state.hostId??"");if(!host?.connected)this.state.hostId=this.state.players.find(p=>p.connected)?.id??this.state.players[0]?.id??null;}
+  private async scheduleAlarm(){const times=Object.values(this.state.disconnectDeadlines),mini=this.state.miniGame;if(mini&&mini.phase!=="result"){if(mini.game==="xox"&&mini.secret.moveDeadline)times.push(Number(mini.secret.moveDeadline));else if(mini.game==="bomb"&&mini.secret.explodeAt)times.push(Number(mini.secret.explodeAt));else if(mini.endsAt)times.push(mini.endsAt+2500);}if(this.state.confirmed&&this.state.settings.autoAdvance&&this.state.resultAt)times.push(this.state.resultAt+3000);if(times.length)await this.ctx.storage.setAlarm(Math.min(...times));else await this.ctx.storage.deleteAlarm();}
+  private publicState(viewerId?:string){const tally:Record<string,number>={};if(this.state.voteRevealed||this.state.settings.votePrivacy==="open")Object.values(this.state.votes).flat().forEach(id=>tally[id]=(tally[id]??0)+1);const {votes:_votes,cardPool:_pool,usedCardIds:_used,disconnectDeadlines:_deadlines,lastSnapshot:_snapshot,...safe}=this.state;const mini=this.state.miniGame?{...this.state.miniGame,secret:undefined,submissions:this.state.miniGame.phase==="result"?this.state.miniGame.submissions:{},submittedIds:Object.keys(this.state.miniGame.submissions),spectatorIds:this.activePlayerIds().filter(id=>!this.state.miniGame!.participantIds.includes(id))}:null;const card=this.state.card?{...this.state.card}:null;return {...safe,card,miniGame:mini,playerCount:this.state.players.length,votedPlayerIds:Object.keys(this.state.votes),myVote:viewerId?this.state.votes[viewerId]??[]:[],openVotes:this.state.settings.votePrivacy==="open"?this.state.votes:{},voteTally:tally};}
+  private async saveAndBroadcast(){await this.ctx.storage.put("state",this.state);for(const socket of this.ctx.getWebSockets())try{const meta=socket.deserializeAttachment() as {playerId?:string}|null;socket.send(JSON.stringify({type:"state",state:this.publicState(meta?.playerId)}));}catch{/* closed */}}
 }

@@ -1,6 +1,6 @@
-import type { Card } from "./cards";
+import type { RawCard } from "./cards";
 
-export const importedCards: Card[] = [
+export const importedCards: RawCard[] = [
   {
     "id": 1,
     "kind": "condition",
