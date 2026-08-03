@@ -39,6 +39,7 @@ export default function Home() {
   const card = room?.card ?? { id: 0, kind: "condition" as const, category: "Koşul", icon: "◎", text: "", tag: "" };
   const paused = room?.phase === "paused";
   const isVote = card.kind === "vote";
+  const isDigital = card.kind === "digital";
   const maxSelections = Math.min(card.maxSelections ?? 1, Math.max(1, (room?.players.length ?? 2) - 1));
   const allVotesIn = Boolean(room && isVote && room.players.filter((p) => p.connected).every((p) => room.votedPlayerIds?.includes(p.id)));
   const accent = categoryMeta[card.kind]?.color ?? "#a855f7";
@@ -138,6 +139,7 @@ export default function Home() {
             {!room.card ? <div className={`closed-card-wrap ${isMyTurn ? "your-turn" : ""}`}><div className="closed-card"><span className="closed-logo">S!</span><i>SHOT!</i><small>KART #{String(room.round).padStart(2,"0")}</small></div>{isMyTurn ? <><p>Sıra sende. Hazır olduğunda kartını aç.</p><button className="reveal-button" onClick={()=>send({type:"revealCard"})}>KARTI AÇ <span>✦</span></button></> : <div className="waiting-reveal"><span className="dots"><i/><i/><i/></span><p><strong>{current?.nickname}</strong> kartını açacak</p></div>}</div> : <>
             <div className={`card-stack ${room.revealedBy===playerId?"opener-highlight":""}`} style={{"--accent":accent} as React.CSSProperties}><div className="back-card one"/><div className="back-card two"/><article className={`game-card category-${card.kind} ${room.confirmed ? "confirmed" : ""}`}><div className="card-top"><span>{card.category}</span><span className="card-icon">{card.icon}</span></div><div className="card-copy"><div className="quote">“</div><h1>{card.text}</h1><p>{isVote ? "Oylar gizlidir · Kendine oy veremezsin" : "Dürüst ol, bahane yok."}</p></div><div className="card-bottom"><span>#{String(card.id).padStart(3,"0")}</span><b>{room.confirmed ? "SONUÇ ONAYLANDI" : card.tag}</b></div></article></div>
             <div className="pass-row"><span>Sana uymadı mı?</span><button disabled={!isHost || passes===0} onClick={passCard}>↷ PAS GEÇ <b>{passes}</b></button></div>
+            {isDigital&&<details className="mini-game-brief"><summary><span>⌁</span><div><small>DİJİTAL MİNİ OYUN</small><b>{card.tag}</b></div><i>⌄</i></summary><p>{card.instructions}</p><label>Bu sürümde sonucu oyuncular işaretler. Etkileşimli oyun motoru mobil aşamadan önce bağlanacak.</label></details>}
             {isVote ? (
               <section className="response-panel vote-panel">
                 <div className="response-title"><div><small>GİZLİ OYLAMA</small><h2>{room.voteRevealed ? "Sonuçlar açıklandı" : `${maxSelections} kişi seç`}</h2></div><span>{room.votedPlayerIds?.length??0}/{orderedPlayers.filter(p=>p.connected).length} OY</span></div>
