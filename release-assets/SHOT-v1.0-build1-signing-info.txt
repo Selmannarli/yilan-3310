@@ -1,0 +1,14 @@
+SHOT! Google Play release signing information
+
+Package: com.shotparti.app
+Version code: 1
+Version name: 1.0
+AAB: SHOT-v1.0-build1-signed.aab
+AAB SHA-256: E45D30FFA07D5CC05EA0AC13F41FBE146784BBD1ACFBC87FACF94C0074DDB190
+
+Upload key alias: shot-upload
+Upload certificate owner: CN=SHOT Upload Key, O=SHOT
+Upload certificate SHA-256: 3B:23:25:EE:B5:C5:AA:50:D9:B0:BE:FE:9C:D6:81:08:33:92:1D:36:BE:07:E7:5F:9F:C0:49:67:E3:CC:BF:E1
+Certificate validity: 2026-08-04 through 2053-12-20
+
+The keystore and passwords are intentionally stored outside this repository.
