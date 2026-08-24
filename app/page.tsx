@@ -21,7 +21,7 @@ import {
   type TranslationKey,
 } from "./i18n";
 import { Avatar, Icon, type IconName } from "./icons";
-import { disableGoogleAutoSelect, GoogleSignIn } from "./google-sign-in";
+import { GoogleSignIn, signOutGoogle } from "./google-sign-in";
 
 const API = "https://shot-room-server.selman-narli.workers.dev";
 
@@ -990,7 +990,7 @@ export default function Home() {
   async function signOut() {
     const token = authToken;
     clearAccount();
-    disableGoogleAutoSelect();
+    void signOutGoogle();
     if (token)
       fetch(`${API}/auth/logout`, {
         method: "POST",
@@ -1498,6 +1498,8 @@ function AccountPanel({
             <GoogleSignIn
               clientId={googleClientId}
               language={language}
+              label={t("account.google")}
+              busyLabel={t("account.signingIn")}
               onCredential={onGoogleCredential}
             />
           ) : (

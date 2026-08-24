@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { GoogleSignIn as NativeGoogleSignIn } from "@capawesome/capacitor-google-sign-in";
 
 type GoogleCredentialResponse = { credential: string };
 
@@ -23,21 +25,27 @@ let scriptPromise: Promise<void> | null = null;
 export function GoogleSignIn({
   clientId,
   language,
+  label,
+  busyLabel,
   onCredential,
 }: {
   clientId: string;
   language: "tr" | "en";
+  label: string;
+  busyLabel: string;
   onCredential: (credential: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
+  const [nativeBusy, setNativeBusy] = useState(false);
+  const native = Capacitor.isNativePlatform();
 
   useEffect(() => {
     callback.current = onCredential;
   }, [onCredential]);
 
   useEffect(() => {
-    if (!clientId || !host.current) return;
+    if (native || !clientId || !host.current) return;
     let active = true;
     loadGoogleScript().then(() => {
       if (!active || !host.current || !window.google) return;
@@ -59,12 +67,43 @@ export function GoogleSignIn({
       });
     }).catch(() => undefined);
     return () => { active = false; };
-  }, [clientId, language]);
+  }, [clientId, language, native]);
+
+  if (native) {
+    const signIn = async () => {
+      if (nativeBusy) return;
+      setNativeBusy(true);
+      try {
+        await NativeGoogleSignIn.initialize({ clientId });
+        const result = await NativeGoogleSignIn.signIn();
+        callback.current(result.idToken);
+      } catch {
+        // The account flow may be canceled by the user.
+      } finally {
+        setNativeBusy(false);
+      }
+    };
+    return (
+      <button
+        type="button"
+        className="native-google-signin"
+        disabled={nativeBusy}
+        onClick={() => void signIn()}
+      >
+        <span aria-hidden="true">G</span>
+        {nativeBusy ? busyLabel : label}
+      </button>
+    );
+  }
 
   return <div className="google-signin" ref={host} aria-live="polite"/>;
 }
 
-export function disableGoogleAutoSelect() {
+export async function signOutGoogle() {
+  if (Capacitor.isNativePlatform()) {
+    await NativeGoogleSignIn.signOut().catch(() => undefined);
+    return;
+  }
   window.google?.accounts.id.disableAutoSelect();
 }
 
