@@ -1430,7 +1430,13 @@ function Welcome({
           {error}
         </p>
       )}
-      <footer>{t("common.responsible")}</footer>
+      <footer className="welcome-footer">
+        <span>{t("common.responsible")}</span>
+        <nav aria-label={t("legal.links")}>
+          <a href="/privacy">{t("legal.privacy")}</a>
+          <a href="/terms">{t("legal.terms")}</a>
+        </nav>
+      </footer>
     </section>
   );
 }
