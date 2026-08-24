@@ -6,6 +6,17 @@
   "durable_objects": {
     "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shot-user-data",
+      "database_id": "b96adae8-04b4-486e-82a3-9e2fb49dad3c",
+      "migrations_dir": "worker/migrations"
+    }
+  ],
+  "vars": {
+    "GOOGLE_CLIENT_IDS": "710470434160-qdb64va1na7mkk75tvl0gqs13l2cqfnu.apps.googleusercontent.com"
+  },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameRoom"] }],
   "observability": { "enabled": true }
 }

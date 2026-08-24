@@ -3,131 +3,3126 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { cards, categoryMeta, getCardText, miniGameKinds, type Card, type CardKind, type ContentLevel, type Language, type MiniGameKind } from "./cards";
-import { commonGameText, randomNameParts, translate, type TranslationKey } from "./i18n";
+import {
+  cards,
+  categoryMeta,
+  getCardText,
+  miniGameKinds,
+  type Card,
+  type CardKind,
+  type ContentLevel,
+  type Language,
+  type MiniGameKind,
+} from "./cards";
+import {
+  commonGameText,
+  randomNameParts,
+  translate,
+  type TranslationKey,
+} from "./i18n";
 import { Avatar, Icon, type IconName } from "./icons";
+import { disableGoogleAutoSelect, GoogleSignIn } from "./google-sign-in";
 
-const API="https://shot-room-server.selman-narli.workers.dev";
+const API = "https://shot-room-server.selman-narli.workers.dev";
 
-type Player={id:string;nickname:string;avatar:string;shots:number;connected:boolean;spectator:boolean};
-type Settings={categoryWeights:Record<CardKind,number>;contentLevel:ContentLevel;activeMiniGames:MiniGameKind[];digitalTwoPlayer:boolean;digitalGroup:boolean;preventMiniRepeat:boolean;duelOpponentMode:"opener"|"system";preventOpponentRepeat:boolean;allowPhoneCards:boolean;allowTrivia:boolean;allowGroupVoteDuels:boolean;votePrivacy:"secret"|"open";showVoteDistribution:boolean;voteResultMode:"all"|"winner";allowSelfVote:boolean;voteTie:"drink"|"revote";requireHostConfirm:boolean;autoConfirm:boolean;autoAdvance:boolean};
-type MiniState={game:MiniGameKind;phase:"selecting"|"ready"|"countdown"|"playing"|"result";challengerId:string;opponentId:string|null;participantIds:string[];spectatorIds:string[];readyIds:string[];startedAt:number|null;triggerAt:number|null;endsAt:number|null;challenge:Record<string,unknown>;submittedIds:string[];winners:string[];losers:string[];rankings:string[];details:Record<string,unknown>;confirmed:boolean};
-type RoomState={hostId:string|null;players:Player[];phase:"lobby"|"playing"|"paused"|"finished";round:number;totalCards:number|null;passLimit:number;passes:Record<string,number>;activeCategories:CardKind[];settings:Settings;currentPlayer:number;card:Partial<Card>|null;revealedBy:string|null;duelOpponentId:string|null;miniGame:MiniState|null;responses:Record<string,boolean>;votedPlayerIds:string[];myVote:string[];openVotes:Record<string,string[]>;voteTally:Record<string,number>;voteRevealed:boolean;voteWinners:string[];voteRound:number;turnResult:{drinkers:string[];nonDrinkers:string[];reason?:string}|null;confirmed:boolean;resultAt:number|null;resultPreviousShots:Record<string,number>};
+type Player = {
+  id: string;
+  nickname: string;
+  avatar: string;
+  shots: number;
+  connected: boolean;
+  spectator: boolean;
+};
+type AccountUser = { email: string; displayName: string; pictureUrl: string };
+type SavedPreferences = {
+  nickname: string;
+  avatar: string;
+  language: Language;
+  soundOn: boolean;
+  vibrationOn: boolean;
+  reduceMotion: boolean;
+};
+type AccountResponse = {
+  token?: string;
+  user: AccountUser;
+  preferences: SavedPreferences;
+};
+type Settings = {
+  categoryWeights: Record<CardKind, number>;
+  contentLevel: ContentLevel;
+  activeMiniGames: MiniGameKind[];
+  digitalTwoPlayer: boolean;
+  digitalGroup: boolean;
+  preventMiniRepeat: boolean;
+  duelOpponentMode: "opener" | "system";
+  preventOpponentRepeat: boolean;
+  allowPhoneCards: boolean;
+  allowTrivia: boolean;
+  allowGroupVoteDuels: boolean;
+  votePrivacy: "secret" | "open";
+  showVoteDistribution: boolean;
+  voteResultMode: "all" | "winner";
+  allowSelfVote: boolean;
+  voteTie: "drink" | "revote";
+  requireHostConfirm: boolean;
+  autoConfirm: boolean;
+  autoAdvance: boolean;
+};
+type MiniState = {
+  game: MiniGameKind;
+  phase: "selecting" | "ready" | "countdown" | "playing" | "result";
+  challengerId: string;
+  opponentId: string | null;
+  participantIds: string[];
+  spectatorIds: string[];
+  readyIds: string[];
+  startedAt: number | null;
+  triggerAt: number | null;
+  endsAt: number | null;
+  challenge: Record<string, unknown>;
+  submittedIds: string[];
+  winners: string[];
+  losers: string[];
+  rankings: string[];
+  details: Record<string, unknown>;
+  confirmed: boolean;
+};
+type RoomState = {
+  hostId: string | null;
+  players: Player[];
+  phase: "lobby" | "playing" | "paused" | "finished";
+  round: number;
+  totalCards: number | null;
+  passLimit: number;
+  passes: Record<string, number>;
+  activeCategories: CardKind[];
+  settings: Settings;
+  currentPlayer: number;
+  card: Partial<Card> | null;
+  revealedBy: string | null;
+  duelOpponentId: string | null;
+  miniGame: MiniState | null;
+  responses: Record<string, boolean>;
+  votedPlayerIds: string[];
+  myVote: string[];
+  openVotes: Record<string, string[]>;
+  voteTally: Record<string, number>;
+  voteRevealed: boolean;
+  voteWinners: string[];
+  voteRound: number;
+  turnResult: {
+    drinkers: string[];
+    nonDrinkers: string[];
+    reason?: string;
+  } | null;
+  confirmed: boolean;
+  resultAt: number | null;
+  resultPreviousShots: Record<string, number>;
+};
 
-function Toggle({value,onChange,label}:{value:boolean;onChange:()=>void;label:string}){return <button className={`switch ${value?"on":""}`} onClick={onChange} aria-label={label} aria-pressed={value}><span/><Icon name={value?"check":"close"}/></button>;}
-function Segmented<T extends string|number>({value,items,onChange}:{value:T;items:Array<{value:T;label:string}>;onChange:(v:T)=>void}){return <div className="segmented">{items.map(item=><button key={String(item.value)} className={value===item.value?"active":""} onClick={()=>onChange(item.value)}>{item.label}</button>)}</div>;}
-function PlayerFace({player,index=0}:{player?:Player;index?:number}){const seed=player?.avatar?Number(player.avatar)||player.avatar:index;return <span className="player-face"><Avatar seed={seed}/></span>;}
+function Toggle({
+  value,
+  onChange,
+  label,
+}: {
+  value: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      className={`switch ${value ? "on" : ""}`}
+      onClick={onChange}
+      aria-label={label}
+      aria-pressed={value}
+    >
+      <span />
+      <Icon name={value ? "check" : "close"} />
+    </button>
+  );
+}
+function Segmented<T extends string | number>({
+  value,
+  items,
+  onChange,
+}: {
+  value: T;
+  items: Array<{ value: T; label: string }>;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="segmented">
+      {items.map((item) => (
+        <button
+          key={String(item.value)}
+          className={value === item.value ? "active" : ""}
+          onClick={() => onChange(item.value)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+function PlayerFace({
+  player,
+  index = 0,
+}: {
+  player?: Player;
+  index?: number;
+}) {
+  const seed = player?.avatar ? Number(player.avatar) || player.avatar : index;
+  return (
+    <span className="player-face">
+      <Avatar seed={seed} />
+    </span>
+  );
+}
 
-function MiniGame({mini,me,players,isHost,send,language,t}:{mini:MiniState;me:string;players:Player[];isHost:boolean;send:(m:object)=>void;language:Language;t:(key:TranslationKey,values?:Record<string,string|number>)=>string}){
-  const [now,setNow]=useState(0),[taps,setTaps]=useState(0),[sequence,setSequence]=useState<string[]>([]);const sent=useRef(false);
-  const player=(id:string)=>players.find(p=>p.id===id);const name=(id:string)=>player(id)?.nickname??"—";const participant=mini.participantIds.includes(me),submitted=mini.submittedIds.includes(me),started=Boolean(mini.startedAt&&now>=mini.startedAt);
-  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),40);return()=>clearInterval(timer);},[]);
-  useEffect(()=>{if(mini.game==="rapid_tap"&&participant&&mini.endsAt&&now>=mini.endsAt&&!sent.current){sent.current=true;send({type:"miniAction",action:"finish",value:taps});}},[now,mini.game,mini.endsAt,participant,taps,send]);
-  const countdown=Math.min(3,Math.max(0,Math.ceil(((mini.startedAt??0)-now)/1000)));
-  const addSequence=(value:string)=>{if(submitted)return;const next=[...sequence,value].slice(0,4);setSequence(next);if(next.length===4)send({type:"miniAction",action:"answer",value:next});};
-  const instruction:Record<MiniGameKind,TranslationKey>={odd_one:"mini.odd_one",reflex:"mini.reflexWait",rapid_tap:"mini.rapid",five_seconds:"mini.five",emoji_memory:"mini.emojiShow",trust:"mini.secret",quick_math:"mini.math",xox:"mini.xox",bomb:"mini.bombPass",common_answer:"mini.common"};
-  if(mini.phase==="selecting")return <section className="mini-card"><MiniHead mini={mini} t={t}/>{me===mini.challengerId?<><h3>{t("mini.chooseOpponent")}</h3><div className="player-choice-grid">{players.filter(p=>p.connected&&!p.spectator&&p.id!==me).map((p,i)=><button key={p.id} onClick={()=>send({type:"selectMiniOpponent",opponentId:p.id})}><PlayerFace player={p} index={i}/><span>{p.nickname}</span></button>)}</div></>:<LiveWait text={t("mini.opponentWaiting",{name:name(mini.challengerId)})}/>}</section>;
-  if(mini.phase==="ready")return <section className="mini-card"><MiniHead mini={mini} t={t}/><p className="mini-instruction">{t(instruction[mini.game])}</p><div className="ready-list">{mini.participantIds.map((id,i)=><div key={id} className={mini.readyIds.includes(id)?"ready":""}><PlayerFace player={player(id)} index={i}/><span>{name(id)}</span><Icon name={mini.readyIds.includes(id)?"check":"more"}/></div>)}</div>{participant?<button className="primary-action" disabled={mini.readyIds.includes(me)} onClick={()=>send({type:"miniReady"})}>{mini.readyIds.includes(me)?t("mini.readyDone"):t("mini.ready")}</button>:<div className="spectator-note"><Icon name="eye"/><span>{t("mini.watch")}</span></div>}<small>{t("mini.readyCount",{done:mini.readyIds.length,total:mini.participantIds.length})}</small></section>;
-  if(!started&&mini.phase==="countdown")return <section className="mini-card mini-countdown"><MiniHead mini={mini} t={t}/><span>{t("mini.countdown")}</span><strong>{countdown||1}</strong></section>;
-  if(mini.phase==="result"){
-    const stats=(mini.details.times??mini.details.taps??mini.details.choices??{}) as Record<string,string|number>;
-    return <section className="mini-card mini-result"><MiniHead mini={mini} t={t}/><span>{t("mini.result")}</span><h3>{mini.winners.length===1?t("mini.winner",{name:name(mini.winners[0])}):mini.losers.length?t("mini.losers"):t("mini.noLoser")}</h3>{mini.game==="trust"&&<div className="revealed-choices">{mini.participantIds.map(id=><div key={id}><PlayerFace player={player(id)}/><b>{name(id)}</b><span>{String(((mini.details.choices??{}) as Record<string,string>)[id])==="trust"?t("mini.trust"):t("mini.betray")}</span></div>)}</div>}<div className="ranking">{(mini.rankings.length?mini.rankings:mini.participantIds).map((id,index)=><div key={id} className={mini.losers.includes(id)?"loser":""}><b>{index+1}</b><PlayerFace player={player(id)} index={index}/><span>{name(id)}</span><em>{mini.game==="reflex"?(Number(stats[id])<0?t("mini.early"):t("mini.ms",{value:stats[id]??"—"})):mini.game==="five_seconds"?t("mini.seconds",{value:(Number(stats[id])/1000).toFixed(2)}):mini.game==="rapid_tap"?t("mini.taps",{value:stats[id]??0}):mini.losers.includes(id)?"+1 SHOT":"SAFE"}</em></div>)}</div>{isHost&&!mini.confirmed&&<div className="mini-host"><button onClick={()=>send({type:"restartMini"})}><Icon name="redo"/>{t("mini.restart")}</button><button className="primary" onClick={()=>send({type:"confirmMini"})}><Icon name="check"/>{t("mini.confirm")}</button></div>}</section>;
+function MiniGame({
+  mini,
+  me,
+  players,
+  isHost,
+  send,
+  language,
+  t,
+}: {
+  mini: MiniState;
+  me: string;
+  players: Player[];
+  isHost: boolean;
+  send: (m: object) => void;
+  language: Language;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+}) {
+  const [now, setNow] = useState(0),
+    [taps, setTaps] = useState(0),
+    [sequence, setSequence] = useState<string[]>([]);
+  const sent = useRef(false);
+  const player = (id: string) => players.find((p) => p.id === id);
+  const name = (id: string) => player(id)?.nickname ?? "—";
+  const participant = mini.participantIds.includes(me),
+    submitted = mini.submittedIds.includes(me),
+    started = Boolean(mini.startedAt && now >= mini.startedAt);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 40);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (
+      mini.game === "rapid_tap" &&
+      participant &&
+      mini.endsAt &&
+      now >= mini.endsAt &&
+      !sent.current
+    ) {
+      sent.current = true;
+      send({ type: "miniAction", action: "finish", value: taps });
+    }
+  }, [now, mini.game, mini.endsAt, participant, taps, send]);
+  const countdown = Math.min(
+    3,
+    Math.max(0, Math.ceil(((mini.startedAt ?? 0) - now) / 1000)),
+  );
+  const addSequence = (value: string) => {
+    if (submitted) return;
+    const next = [...sequence, value].slice(0, 4);
+    setSequence(next);
+    if (next.length === 4)
+      send({ type: "miniAction", action: "answer", value: next });
+  };
+  const instruction: Record<MiniGameKind, TranslationKey> = {
+    odd_one: "mini.odd_one",
+    reflex: "mini.reflexWait",
+    rapid_tap: "mini.rapid",
+    five_seconds: "mini.five",
+    emoji_memory: "mini.emojiShow",
+    trust: "mini.secret",
+    quick_math: "mini.math",
+    xox: "mini.xox",
+    bomb: "mini.bombPass",
+    common_answer: "mini.common",
+  };
+  if (mini.phase === "selecting")
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        {me === mini.challengerId ? (
+          <>
+            <h3>{t("mini.chooseOpponent")}</h3>
+            <div className="player-choice-grid">
+              {players
+                .filter((p) => p.connected && !p.spectator && p.id !== me)
+                .map((p, i) => (
+                  <button
+                    key={p.id}
+                    onClick={() =>
+                      send({ type: "selectMiniOpponent", opponentId: p.id })
+                    }
+                  >
+                    <PlayerFace player={p} index={i} />
+                    <span>{p.nickname}</span>
+                  </button>
+                ))}
+            </div>
+          </>
+        ) : (
+          <LiveWait
+            text={t("mini.opponentWaiting", { name: name(mini.challengerId) })}
+          />
+        )}
+      </section>
+    );
+  if (mini.phase === "ready")
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        <p className="mini-instruction">{t(instruction[mini.game])}</p>
+        <div className="ready-list">
+          {mini.participantIds.map((id, i) => (
+            <div key={id} className={mini.readyIds.includes(id) ? "ready" : ""}>
+              <PlayerFace player={player(id)} index={i} />
+              <span>{name(id)}</span>
+              <Icon name={mini.readyIds.includes(id) ? "check" : "more"} />
+            </div>
+          ))}
+        </div>
+        {participant ? (
+          <button
+            className="primary-action"
+            disabled={mini.readyIds.includes(me)}
+            onClick={() => send({ type: "miniReady" })}
+          >
+            {mini.readyIds.includes(me) ? t("mini.readyDone") : t("mini.ready")}
+          </button>
+        ) : (
+          <div className="spectator-note">
+            <Icon name="eye" />
+            <span>{t("mini.watch")}</span>
+          </div>
+        )}
+        <small>
+          {t("mini.readyCount", {
+            done: mini.readyIds.length,
+            total: mini.participantIds.length,
+          })}
+        </small>
+      </section>
+    );
+  if (!started && mini.phase === "countdown")
+    return (
+      <section className="mini-card mini-countdown">
+        <MiniHead mini={mini} t={t} />
+        <span>{t("mini.countdown")}</span>
+        <strong>{countdown || 1}</strong>
+      </section>
+    );
+  if (mini.phase === "result") {
+    const stats = (mini.details.times ??
+      mini.details.taps ??
+      mini.details.choices ??
+      {}) as Record<string, string | number>;
+    return (
+      <section className="mini-card mini-result">
+        <MiniHead mini={mini} t={t} />
+        <span>{t("mini.result")}</span>
+        <h3>
+          {mini.winners.length === 1
+            ? t("mini.winner", { name: name(mini.winners[0]) })
+            : mini.losers.length
+              ? t("mini.losers")
+              : t("mini.noLoser")}
+        </h3>
+        {mini.game === "trust" && (
+          <div className="revealed-choices">
+            {mini.participantIds.map((id) => (
+              <div key={id}>
+                <PlayerFace player={player(id)} />
+                <b>{name(id)}</b>
+                <span>
+                  {String(
+                    ((mini.details.choices ?? {}) as Record<string, string>)[
+                      id
+                    ],
+                  ) === "trust"
+                    ? t("mini.trust")
+                    : t("mini.betray")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="ranking">
+          {(mini.rankings.length ? mini.rankings : mini.participantIds).map(
+            (id, index) => (
+              <div key={id} className={mini.losers.includes(id) ? "loser" : ""}>
+                <b>{index + 1}</b>
+                <PlayerFace player={player(id)} index={index} />
+                <span>{name(id)}</span>
+                <em>
+                  {mini.game === "reflex"
+                    ? Number(stats[id]) < 0
+                      ? t("mini.early")
+                      : t("mini.ms", { value: stats[id] ?? "—" })
+                    : mini.game === "five_seconds"
+                      ? t("mini.seconds", {
+                          value: (Number(stats[id]) / 1000).toFixed(2),
+                        })
+                      : mini.game === "rapid_tap"
+                        ? t("mini.taps", { value: stats[id] ?? 0 })
+                        : mini.losers.includes(id)
+                          ? "+1 SHOT"
+                          : "SAFE"}
+                </em>
+              </div>
+            ),
+          )}
+        </div>
+        {isHost && !mini.confirmed && (
+          <div className="mini-host">
+            <button onClick={() => send({ type: "restartMini" })}>
+              <Icon name="redo" />
+              {t("mini.restart")}
+            </button>
+            <button
+              className="primary"
+              onClick={() => send({ type: "confirmMini" })}
+            >
+              <Icon name="check" />
+              {t("mini.confirm")}
+            </button>
+          </div>
+        )}
+      </section>
+    );
   }
-  const waiting=submitted?<LiveWait text={t("mini.locked")}/>:null;
-  if(mini.game==="xox"){
-    const board=(mini.challenge.board??Array(9).fill(null)) as Array<string|null>,turn=String(mini.challenge.currentTurnId??""),left=Math.max(0,Math.ceil((Number(mini.challenge.moveDeadline??0)-now)/1000));
-    return <section className="mini-card"><MiniHead mini={mini} t={t}/><div className="live-status"><span>{turn===me?t("mini.yourMove"):t("mini.theirMove",{name:name(turn)})}</span><b>{left}s</b></div><div className="xox-board">{board.map((cell,index)=><button key={index} disabled={!participant||turn!==me||Boolean(cell)} onClick={()=>send({type:"miniAction",action:"move",value:index})}>{cell&&<Icon name={cell==="X"?"xMark":"oMark"}/>}</button>)}</div>{!participant&&<div className="spectator-note"><Icon name="eye"/><span>{t("mini.watchHint")}</span></div>}</section>;
+  const waiting = submitted ? <LiveWait text={t("mini.locked")} /> : null;
+  if (mini.game === "xox") {
+    const board = (mini.challenge.board ?? Array(9).fill(null)) as Array<
+        string | null
+      >,
+      turn = String(mini.challenge.currentTurnId ?? ""),
+      left = Math.max(
+        0,
+        Math.ceil((Number(mini.challenge.moveDeadline ?? 0) - now) / 1000),
+      );
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        <div className="live-status">
+          <span>
+            {turn === me
+              ? t("mini.yourMove")
+              : t("mini.theirMove", { name: name(turn) })}
+          </span>
+          <b>{left}s</b>
+        </div>
+        <div className="xox-board">
+          {board.map((cell, index) => (
+            <button
+              key={index}
+              disabled={!participant || turn !== me || Boolean(cell)}
+              onClick={() =>
+                send({ type: "miniAction", action: "move", value: index })
+              }
+            >
+              {cell && <Icon name={cell === "X" ? "xMark" : "oMark"} />}
+            </button>
+          ))}
+        </div>
+        {!participant && (
+          <div className="spectator-note">
+            <Icon name="eye" />
+            <span>{t("mini.watchHint")}</span>
+          </div>
+        )}
+      </section>
+    );
   }
-  if(mini.game==="bomb"){
-    const holder=String(mini.challenge.holderId??""),holding=holder===me,locked=now>Number(mini.challenge.passDeadline??0);
-    return <section className="mini-card bomb-game"><MiniHead mini={mini} t={t}/><div className="bomb-visual"><Icon name="bomb"/><span>{holding?t("mini.bombYou"):t("mini.bombHolder",{name:name(holder)})}</span></div>{holding&&!locked?<div className="player-choice-grid compact">{mini.participantIds.filter(id=>id!==me).map((id,i)=><button key={id} onClick={()=>send({type:"miniAction",action:"pass",value:id})}><PlayerFace player={player(id)} index={i}/><span>{name(id)}</span></button>)}</div>:<LiveWait text={holding?t("mini.bombLocked"):t("mini.watch")}/>}</section>;
+  if (mini.game === "bomb") {
+    const holder = String(mini.challenge.holderId ?? ""),
+      holding = holder === me,
+      locked = now > Number(mini.challenge.passDeadline ?? 0);
+    return (
+      <section className="mini-card bomb-game">
+        <MiniHead mini={mini} t={t} />
+        <div className="bomb-visual">
+          <Icon name="bomb" />
+          <span>
+            {holding
+              ? t("mini.bombYou")
+              : t("mini.bombHolder", { name: name(holder) })}
+          </span>
+        </div>
+        {holding && !locked ? (
+          <div className="player-choice-grid compact">
+            {mini.participantIds
+              .filter((id) => id !== me)
+              .map((id, i) => (
+                <button
+                  key={id}
+                  onClick={() =>
+                    send({ type: "miniAction", action: "pass", value: id })
+                  }
+                >
+                  <PlayerFace player={player(id)} index={i} />
+                  <span>{name(id)}</span>
+                </button>
+              ))}
+          </div>
+        ) : (
+          <LiveWait text={holding ? t("mini.bombLocked") : t("mini.watch")} />
+        )}
+      </section>
+    );
   }
-  if(mini.game==="trust"&&!participant)return <section className="mini-card"><MiniHead mini={mini} t={t}/><div className="ready-list">{mini.participantIds.map((id,index)=><div key={id} className={mini.submittedIds.includes(id)?"ready":""}><PlayerFace player={player(id)} index={index}/><span>{name(id)}</span><Icon name={mini.submittedIds.includes(id)?"check":"more"}/></div>)}</div><div className="spectator-note"><Icon name="eyeOff"/><span>{t("mini.secret")}</span></div></section>;
-  if(!participant)return <section className="mini-card"><MiniHead mini={mini} t={t}/><div className="spectator-note large"><Icon name="eye"/><b>{t("mini.watch")}</b><span>{t("mini.watchHint")}</span></div></section>;
-  if(waiting)return <section className="mini-card"><MiniHead mini={mini} t={t}/>{waiting}</section>;
-  if(mini.game==="reflex"){const go=Boolean(mini.triggerAt&&now>=mini.triggerAt);return <section className={`mini-card reflex-game ${go?"go":"wait"}`}><MiniHead mini={mini} t={t}/><button onClick={()=>send({type:"miniAction",action:"tap"})}><Icon name="reflex"/><span>{go?t("mini.reflexGo"):t("mini.reflexWait")}</span></button></section>;}
-  if(mini.game==="rapid_tap")return <section className="mini-card tap-game"><MiniHead mini={mini} t={t}/><strong>{taps}</strong><button disabled={Boolean(mini.endsAt&&now>=mini.endsAt)} onClick={()=>setTaps(v=>v+1)}><Icon name="rapid_tap"/>{t("mini.rapid")}</button></section>;
-  if(mini.game==="five_seconds"){const elapsed=now-(mini.startedAt??now);return <section className="mini-card timer-game"><MiniHead mini={mini} t={t}/><strong>{elapsed<1000?(elapsed/1000).toFixed(2):"?.??"}</strong><button onClick={()=>send({type:"miniAction",action:"stop"})}><Icon name="five_seconds"/>{t("mini.five")}</button></section>;}
-  if(mini.game==="emoji_memory"){const show=now-(mini.startedAt??now)<2000,source=(mini.challenge.sequence??[]) as string[],options=(mini.challenge.options??[]) as string[];return <section className="mini-card symbol-game"><MiniHead mini={mini} t={t}/><p>{show?t("mini.emojiShow"):t("mini.emojiPick")}</p><div className="symbol-sequence">{(show?source:sequence).map((item,index)=><Symbol key={`${item}-${index}`} name={item}/>)}</div>{!show&&<div className="symbol-options">{options.map(item=><button key={item} disabled={sequence.includes(item)} onClick={()=>addSequence(item)}><Symbol name={item}/></button>)}</div>}</section>;}
-  if(mini.game==="odd_one")return <section className="mini-card odd-game"><MiniHead mini={mini} t={t}/><p>{t("mini.odd_one")}</p><div>{Array.from({length:24},(_,index)=><button key={index} onClick={()=>send({type:"miniAction",action:"answer",value:index})}><Icon name={index===Number(mini.challenge.targetIndex)?"oddDifferent":"oddNormal"}/></button>)}</div></section>;
-  if(mini.game==="quick_math")return <section className="mini-card math-game"><MiniHead mini={mini} t={t}/><strong>{String(mini.challenge.question)}</strong><div>{((mini.challenge.options??[]) as number[]).map(value=><button key={value} onClick={()=>send({type:"miniAction",action:"answer",value})}>{value}</button>)}</div></section>;
-  if(mini.game==="common_answer"){const key=String(mini.challenge.key) as keyof typeof commonGameText.tr;return <section className="mini-card common-game"><MiniHead mini={mini} t={t}/><h3>{commonGameText[language][key]??key}</h3><div>{((mini.challenge.options??[]) as string[]).map(value=><button key={value} onClick={()=>send({type:"miniAction",action:"answer",value})}>{commonGameText[language][value as keyof typeof commonGameText.tr]??value}</button>)}</div></section>;}
-  return <section className="mini-card trust-game"><MiniHead mini={mini} t={t}/><p>{t("mini.secret")}</p><div><button onClick={()=>send({type:"miniAction",action:"choice",value:"trust"})}><Icon name="trustChoice"/>{t("mini.trust")}</button><button onClick={()=>send({type:"miniAction",action:"choice",value:"betray"})}><Icon name="betrayChoice"/>{t("mini.betray")}</button></div></section>;
+  if (mini.game === "trust" && !participant)
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        <div className="ready-list">
+          {mini.participantIds.map((id, index) => (
+            <div
+              key={id}
+              className={mini.submittedIds.includes(id) ? "ready" : ""}
+            >
+              <PlayerFace player={player(id)} index={index} />
+              <span>{name(id)}</span>
+              <Icon name={mini.submittedIds.includes(id) ? "check" : "more"} />
+            </div>
+          ))}
+        </div>
+        <div className="spectator-note">
+          <Icon name="eyeOff" />
+          <span>{t("mini.secret")}</span>
+        </div>
+      </section>
+    );
+  if (!participant)
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        <div className="spectator-note large">
+          <Icon name="eye" />
+          <b>{t("mini.watch")}</b>
+          <span>{t("mini.watchHint")}</span>
+        </div>
+      </section>
+    );
+  if (waiting)
+    return (
+      <section className="mini-card">
+        <MiniHead mini={mini} t={t} />
+        {waiting}
+      </section>
+    );
+  if (mini.game === "reflex") {
+    const go = Boolean(mini.triggerAt && now >= mini.triggerAt);
+    return (
+      <section className={`mini-card reflex-game ${go ? "go" : "wait"}`}>
+        <MiniHead mini={mini} t={t} />
+        <button onClick={() => send({ type: "miniAction", action: "tap" })}>
+          <Icon name="reflex" />
+          <span>{go ? t("mini.reflexGo") : t("mini.reflexWait")}</span>
+        </button>
+      </section>
+    );
+  }
+  if (mini.game === "rapid_tap")
+    return (
+      <section className="mini-card tap-game">
+        <MiniHead mini={mini} t={t} />
+        <strong>{taps}</strong>
+        <button
+          disabled={Boolean(mini.endsAt && now >= mini.endsAt)}
+          onClick={() => setTaps((v) => v + 1)}
+        >
+          <Icon name="rapid_tap" />
+          {t("mini.rapid")}
+        </button>
+      </section>
+    );
+  if (mini.game === "five_seconds") {
+    const elapsed = now - (mini.startedAt ?? now);
+    return (
+      <section className="mini-card timer-game">
+        <MiniHead mini={mini} t={t} />
+        <strong>{elapsed < 1000 ? (elapsed / 1000).toFixed(2) : "?.??"}</strong>
+        <button onClick={() => send({ type: "miniAction", action: "stop" })}>
+          <Icon name="five_seconds" />
+          {t("mini.five")}
+        </button>
+      </section>
+    );
+  }
+  if (mini.game === "emoji_memory") {
+    const show = now - (mini.startedAt ?? now) < 2000,
+      source = (mini.challenge.sequence ?? []) as string[],
+      options = (mini.challenge.options ?? []) as string[];
+    return (
+      <section className="mini-card symbol-game">
+        <MiniHead mini={mini} t={t} />
+        <p>{show ? t("mini.emojiShow") : t("mini.emojiPick")}</p>
+        <div className="symbol-sequence">
+          {(show ? source : sequence).map((item, index) => (
+            <Symbol key={`${item}-${index}`} name={item} />
+          ))}
+        </div>
+        {!show && (
+          <div className="symbol-options">
+            {options.map((item) => (
+              <button
+                key={item}
+                disabled={sequence.includes(item)}
+                onClick={() => addSequence(item)}
+              >
+                <Symbol name={item} />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+  if (mini.game === "odd_one")
+    return (
+      <section className="mini-card odd-game">
+        <MiniHead mini={mini} t={t} />
+        <p>{t("mini.odd_one")}</p>
+        <div>
+          {Array.from({ length: 24 }, (_, index) => (
+            <button
+              key={index}
+              onClick={() =>
+                send({ type: "miniAction", action: "answer", value: index })
+              }
+            >
+              <Icon
+                name={
+                  index === Number(mini.challenge.targetIndex)
+                    ? "oddDifferent"
+                    : "oddNormal"
+                }
+              />
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  if (mini.game === "quick_math")
+    return (
+      <section className="mini-card math-game">
+        <MiniHead mini={mini} t={t} />
+        <strong>{String(mini.challenge.question)}</strong>
+        <div>
+          {((mini.challenge.options ?? []) as number[]).map((value) => (
+            <button
+              key={value}
+              onClick={() =>
+                send({ type: "miniAction", action: "answer", value })
+              }
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  if (mini.game === "common_answer") {
+    const key = String(mini.challenge.key) as keyof typeof commonGameText.tr;
+    return (
+      <section className="mini-card common-game">
+        <MiniHead mini={mini} t={t} />
+        <h3>{commonGameText[language][key] ?? key}</h3>
+        <div>
+          {((mini.challenge.options ?? []) as string[]).map((value) => (
+            <button
+              key={value}
+              onClick={() =>
+                send({ type: "miniAction", action: "answer", value })
+              }
+            >
+              {commonGameText[language][
+                value as keyof typeof commonGameText.tr
+              ] ?? value}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="mini-card trust-game">
+      <MiniHead mini={mini} t={t} />
+      <p>{t("mini.secret")}</p>
+      <div>
+        <button
+          onClick={() =>
+            send({ type: "miniAction", action: "choice", value: "trust" })
+          }
+        >
+          <Icon name="trustChoice" />
+          {t("mini.trust")}
+        </button>
+        <button
+          onClick={() =>
+            send({ type: "miniAction", action: "choice", value: "betray" })
+          }
+        >
+          <Icon name="betrayChoice" />
+          {t("mini.betray")}
+        </button>
+      </div>
+    </section>
+  );
 }
-function MiniHead({mini,t}:{mini:MiniState;t:(key:TranslationKey,values?:Record<string,string|number>)=>string}){return <header className="mini-head"><Icon name={mini.game}/><div><small>{t("category.digital")}</small><h2>{t(`miniName.${mini.game}` as TranslationKey)}</h2></div></header>;}
-function LiveWait({text}:{text:string}){return <div className="live-wait"><i/><span>{text}</span></div>;}
-function Symbol({name}:{name:string}){const symbols={circle:"memoryCircle",triangle:"memoryTriangle",square:"memorySquare",diamond:"memoryDiamond",star:"memoryStar",plus:"memoryPlus",wave:"memoryWave",moon:"memoryMoon"} as const;return <Icon className="memory-symbol" name={symbols[name as keyof typeof symbols]??"memoryCircle"}/>;}
-
-export default function Home(){
-  const socket=useRef<WebSocket|null>(null);const [language,setLanguage]=useState<Language>("tr"),[nickname,setNickname]=useState(""),[avatar,setAvatar]=useState("0"),[joinCode,setJoinCode]=useState(""),[roomCode,setRoomCode]=useState(""),[playerId,setPlayerId]=useState(""),[room,setRoom]=useState<RoomState|null>(null),[connection,setConnection]=useState<"idle"|"connecting"|"online"|"error">("idle"),[error,setError]=useState(""),[voteDraft,setVoteDraft]=useState<string[]>([]),[playersOpen,setPlayersOpen]=useState(false),[settingsOpen,setSettingsOpen]=useState(false),[settingsSection,setSettingsSection]=useState<string|null>(null),[soundOn,setSoundOn]=useState(true),[vibrationOn,setVibrationOn]=useState(true),[reduceMotion,setReduceMotion]=useState(false),[copied,setCopied]=useState(false),[confirmAction,setConfirmAction]=useState<{label:string;run:()=>void}|null>(null),[resultVisible,setResultVisible]=useState(false);
-  const t=(key:TranslationKey,values:Record<string,string|number>={})=>translate(language,key,values);
-  useEffect(()=>{const saved=(localStorage.getItem("shot-language") as Language|null),device=navigator.language.toLowerCase().startsWith("tr")?"tr":"en",lang=saved??device;setLanguage(lang);document.documentElement.lang=lang;setNickname(localStorage.getItem("shot-nickname")||randomName(lang));setAvatar(localStorage.getItem("shot-avatar")||String(Math.floor(Math.random()*12)));setSoundOn(localStorage.getItem("shot-sound")!=="off");setVibrationOn(localStorage.getItem("shot-vibration")!=="off");setReduceMotion(localStorage.getItem("shot-reduce-motion")==="on");const code=new URLSearchParams(location.search).get("room");if(code)setJoinCode(code.replace(/\D/g,"").slice(0,6));return()=>socket.current?.close();},[]);
-  useEffect(()=>{document.documentElement.lang=language;localStorage.setItem("shot-language",language);},[language]);useEffect(()=>{if(nickname)localStorage.setItem("shot-nickname",nickname);},[nickname]);useEffect(()=>{localStorage.setItem("shot-avatar",avatar);},[avatar]);useEffect(()=>{localStorage.setItem("shot-sound",soundOn?"on":"off");},[soundOn]);useEffect(()=>{localStorage.setItem("shot-vibration",vibrationOn?"on":"off");},[vibrationOn]);useEffect(()=>{localStorage.setItem("shot-reduce-motion",reduceMotion?"on":"off");},[reduceMotion]);
-  useEffect(()=>{if(!room?.resultAt)return;setResultVisible(true);const age=Date.now()-room.resultAt;if(age>3500){setResultVisible(false);return;}const timer=setTimeout(()=>setResultVisible(false),Math.max(300,2800-age));return()=>clearTimeout(timer);},[room?.resultAt]);
-  const players=room?.players??[],me=players.find(p=>p.id===playerId),isHost=room?.hostId===playerId,current=room?.players[room.currentPlayer],isMyTurn=current?.id===playerId,activePlayers=players.filter(p=>p.connected&&!p.spectator),connectedCount=activePlayers.length,responseCount=Object.keys(room?.responses??{}).length,everyoneAnswered=connectedCount>0&&responseCount===connectedCount,card=room?.card?cards.find(c=>c.id===room.card!.id)??null:null,maxSelections=Math.min(card?.maxSelections??1,Math.max(1,activePlayers.length-(room?.settings.allowSelfVote?0:1))),allVotes=Boolean(room&&activePlayers.every(p=>room.votedPlayerIds.includes(p.id))),shareUrl=typeof window==="undefined"?"":`${location.origin}?room=${roomCode}`;
-  function send(message:object){if(socket.current?.readyState===WebSocket.OPEN){socket.current.send(JSON.stringify(message));if(["revealCard","answer","vote","miniAction"].includes(String((message as {type?:string}).type)))feedback();}}
-  function feedback(){if(vibrationOn)navigator.vibrate?.(22);if(soundOn)try{const AudioClass=window.AudioContext||(window as typeof window&{webkitAudioContext:typeof AudioContext}).webkitAudioContext,ctx=new AudioClass(),osc=ctx.createOscillator(),gain=ctx.createGain();osc.frequency.value=480;gain.gain.value=.025;osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.05);}catch{/* unsupported */}}
-  async function createRoom(){if(!nickname.trim()){setError(t("room.nameError"));return;}setConnection("connecting");setError("");try{const response=await fetch(`${API}/rooms`,{method:"POST"});if(!response.ok)throw new Error();const data=await response.json() as {code:string};connect(data.code);}catch{setConnection("error");setError(t("room.createError"));}}
-  function joinRoom(){if(!nickname.trim())return setError(t("room.nameError"));if(!/^\d{6}$/.test(joinCode))return setError(t("room.codeError"));connect(joinCode);}
-  function connect(code:string){socket.current?.close();setConnection("connecting");setRoomCode(code);const saved=localStorage.getItem(`shot-player-${code}`)||"",url=`${API.replace("https","wss")}/rooms/${code}/connect?nickname=${encodeURIComponent(nickname.trim())}&avatar=${avatar}${saved?`&playerId=${saved}`:""}`,ws=new WebSocket(url);socket.current=ws;let welcomed=false;ws.onmessage=event=>{const msg=JSON.parse(event.data);if(msg.type==="welcome"){welcomed=true;setPlayerId(msg.playerId);localStorage.setItem(`shot-player-${code}`,msg.playerId);setRoom(msg.state);setConnection("online");}if(msg.type==="state")setRoom(msg.state);};ws.onerror=()=>{if(!welcomed){setConnection("error");setError(t("room.notFound"));}};ws.onclose=()=>{if(!welcomed){setRoom(null);setConnection("error");setError(t("room.notFound"));}else setConnection("idle");};}
-  function leave(){socket.current?.close();setRoom(null);setRoomCode("");setPlayerId("");setConnection("idle");setPlayersOpen(false);setSettingsOpen(false);history.replaceState({},"",location.pathname);}
-  function startGame(){const serverCards=cards.map(c=>({id:c.id,kind:c.kind,game:c.game,level:c.level,maxSelections:c.maxSelections,outcome:c.outcome,requiresPhone:c.kind==="duel"&&/telefon|mesaj|fotoğraf|galeri/i.test(c.text),trivia:c.kind==="duel"&&/başkent|ülke|şehir|bilgi|harf/i.test(c.text),groupVote:c.kind==="duel"&&/grup|oylama|oy versin/i.test(c.text)}));send({type:"start",cards:serverCards});}
-  async function copyRoom(){await navigator.clipboard?.writeText(shareUrl);setCopied(true);setTimeout(()=>setCopied(false),1400);}
-  function randomize(){setNickname(randomName(language));setAvatar(String(Math.floor(Math.random()*12)));}
-  function changeLanguage(lang:Language){setLanguage(lang);document.documentElement.lang=lang;}
-  function toggleVote(id:string){if(room?.myVote.length||room?.voteRevealed)return;setVoteDraft(old=>old.includes(id)?old.filter(x=>x!==id):old.length<maxSelections?[...old,id]:maxSelections===1?[id]:old);}
-  function next(){setVoteDraft([]);setResultVisible(false);send({type:"next"});}
-  function critical(label:string,run:()=>void){setConfirmAction({label,run});}
-  const shellClass=`shot-app phase-${room?.phase??"welcome"} ${reduceMotion?"reduce-motion":""}`;
-  return <main className={shellClass}>
-    {!room?<Welcome language={language} nickname={nickname} avatar={avatar} joinCode={joinCode} connection={connection} error={error} setNickname={setNickname} setAvatar={setAvatar} setJoinCode={setJoinCode} setLanguage={changeLanguage} randomize={randomize} createRoom={createRoom} joinRoom={joinRoom} t={t}/>:<>
-      <TopBar room={room} roomCode={roomCode} current={current} isMyTurn={isMyTurn} isHost={isHost} connection={connection} onPlayers={()=>setPlayersOpen(true)} onSettings={()=>{setSettingsSection(null);setSettingsOpen(true);}} onRounds={()=>{setSettingsSection("length");setSettingsOpen(true);}} t={t}/>
-      {room.phase==="lobby"?<Lobby room={room} roomCode={roomCode} shareUrl={shareUrl} isHost={isHost} copied={copied} copyRoom={copyRoom} startGame={startGame} openSettings={()=>setSettingsOpen(true)} t={t}/>:room.phase==="finished"?<Finish room={room} leave={leave} t={t}/>:<Game room={room} playerId={playerId} current={current} card={card} language={language} isHost={isHost} isMyTurn={isMyTurn} me={me} voteDraft={voteDraft} maxSelections={maxSelections} allVotes={allVotes} everyoneAnswered={everyoneAnswered} responseCount={responseCount} connectedCount={connectedCount} send={send} toggleVote={toggleVote} next={next} t={t}/>}
-      {playersOpen&&<PlayersDrawer room={room} playerId={playerId} isHost={isHost} close={()=>setPlayersOpen(false)} send={send} critical={critical} t={t}/>}
-      {settingsOpen&&<SettingsSheet room={room} language={language} isHost={isHost} section={settingsSection} setSection={setSettingsSection} close={()=>setSettingsOpen(false)} send={send} soundOn={soundOn} setSoundOn={setSoundOn} vibrationOn={vibrationOn} setVibrationOn={setVibrationOn} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} setLanguage={changeLanguage} leave={leave} critical={critical} t={t}/>}
-      {room.phase==="paused"&&<div className="pause-overlay"><Icon name="pause"/><h2>{t("game.paused")}</h2>{isHost&&<button onClick={()=>send({type:"pause"})}>{t("game.resume")}</button>}</div>}
-      {room.confirmed&&room.turnResult&&resultVisible&&<ShotResult room={room} players={players} isHost={isHost} next={next} close={()=>setResultVisible(false)} t={t}/>}
-    </>}
-    {confirmAction&&<ConfirmDialog action={confirmAction} close={()=>setConfirmAction(null)} t={t}/>}
-  </main>;
+function MiniHead({
+  mini,
+  t,
+}: {
+  mini: MiniState;
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string;
+}) {
+  return (
+    <header className="mini-head">
+      <Icon name={mini.game} />
+      <div>
+        <small>{t("category.digital")}</small>
+        <h2>{t(`miniName.${mini.game}` as TranslationKey)}</h2>
+      </div>
+    </header>
+  );
+}
+function LiveWait({ text }: { text: string }) {
+  return (
+    <div className="live-wait">
+      <i />
+      <span>{text}</span>
+    </div>
+  );
+}
+function Symbol({ name }: { name: string }) {
+  const symbols = {
+    circle: "memoryCircle",
+    triangle: "memoryTriangle",
+    square: "memorySquare",
+    diamond: "memoryDiamond",
+    star: "memoryStar",
+    plus: "memoryPlus",
+    wave: "memoryWave",
+    moon: "memoryMoon",
+  } as const;
+  return (
+    <Icon
+      className="memory-symbol"
+      name={symbols[name as keyof typeof symbols] ?? "memoryCircle"}
+    />
+  );
 }
 
-function randomName(language:Language){const [first,last]=randomNameParts[language];return `${first[Math.floor(Math.random()*first.length)]} ${last[Math.floor(Math.random()*last.length)]}`;}
-
-type T=(key:TranslationKey,values?:Record<string,string|number>)=>string;
-function Welcome({language,nickname,avatar,joinCode,connection,error,setNickname,setAvatar,setJoinCode,setLanguage,randomize,createRoom,joinRoom,t}:{language:Language;nickname:string;avatar:string;joinCode:string;connection:string;error:string;setNickname:(v:string)=>void;setAvatar:(v:string)=>void;setJoinCode:(v:string)=>void;setLanguage:(v:Language)=>void;randomize:()=>void;createRoom:()=>void;joinRoom:()=>void;t:T}){return <section className="welcome-screen"><header className="brand-row"><Brand/><button className="language-pill" onClick={()=>setLanguage(language==="tr"?"en":"tr")}><Icon name="language"/>{language==="tr"?"EN":"TR"}</button></header><div className="hero"><small>{t("app.tagline")}</small><h1>{t("app.title")}</h1><p>{t("app.subtitle")}</p></div><section className="profile-card"><div className="profile-main"><PlayerFace player={{id:"preview",nickname,avatar,shots:0,connected:true,spectator:false}}/><label><span>{t("profile.name")}</span><input value={nickname} maxLength={24} onChange={e=>setNickname(e.target.value)}/></label><button className="icon-control" onClick={randomize} aria-label={t("profile.random")}><Icon name="shuffle"/></button></div><div className="avatar-row">{Array.from({length:12},(_,index)=><button key={index} className={avatar===String(index)?"active":""} onClick={()=>setAvatar(String(index))}><Avatar seed={index}/></button>)}</div></section><button className="primary-hero" disabled={connection==="connecting"} onClick={createRoom}><Icon name="plus"/><span><b>{t("room.create")}</b><small>{t("room.createHint")}</small></span><Icon name="forward"/></button><div className="or-divider"><span>{t("room.haveCode")}</span></div><div className="join-box"><input inputMode="numeric" value={joinCode} onChange={e=>setJoinCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000 000" aria-label={t("room.code")}/><button onClick={joinRoom}>{t("room.join")}</button></div>{error&&<p className="error-message"><Icon name="warning"/>{error}</p>}<footer>{t("common.responsible")}</footer></section>;}
-function Brand(){return <div className="brand"><img className="brand-logo" src="/assets/shot-app-icon.png" alt="" aria-hidden="true"/><strong>SHOT<span>!</span></strong></div>;}
-
-function TopBar({room,current,isMyTurn,isHost,onPlayers,onSettings,onRounds,t}:{room:RoomState;roomCode:string;current?:Player;isMyTurn:boolean;isHost:boolean;connection:string;onPlayers:()=>void;onSettings:()=>void;onRounds:()=>void;t:T}){return <header className="game-topbar"><Brand/>{room.phase!=="lobby"&&<button className="round-button" disabled={!isHost} onClick={onRounds}>{room.totalCards===null?t("game.roundInfinite",{current:room.round}):t("game.round",{current:room.round,total:room.totalCards})}</button>}<div className="topbar-actions">{room.phase!=="lobby"&&<button onClick={onPlayers} aria-label={t("players.title")}><Icon name="players"/></button>}<button onClick={onSettings} aria-label={t("settings.title")}><Icon name="settings"/></button></div>{room.phase!=="lobby"&&<div className="current-turn"><PlayerFace player={current}/><span>{isMyTurn?t("game.turnYou"):t("game.turnPlayer",{name:current?.nickname??"—"})}</span></div>}</header>;}
-
-function Lobby({room,roomCode,shareUrl,isHost,copied,copyRoom,startGame,openSettings,t}:{room:RoomState;roomCode:string;shareUrl:string;isHost:boolean;copied:boolean;copyRoom:()=>void;startGame:()=>void;openSettings:()=>void;t:T}){const active=room.players.filter(p=>!p.spectator);return <section className="lobby-screen"><div className="lobby-intro"><small>{t("lobby.ready")}</small><h1>{t("lobby.title")}</h1><p>{t("lobby.subtitle")}</p></div><section className="code-card"><div><span>{t("room.code")}</span><strong>{roomCode.slice(0,3)} {roomCode.slice(3)}</strong><small><i/> {t("room.live")}</small></div><QRCodeView value={shareUrl}/><button onClick={copyRoom}><Icon name={copied?"check":"copy"}/>{copied?t("room.copied"):t("room.copy")}</button></section><section className="lobby-people"><header><span>{t("lobby.players")}</span><b>{room.players.length}</b></header><div>{room.players.slice(0,8).map((p,i)=><span key={p.id} title={p.nickname}><PlayerFace player={p} index={i}/>{p.id===room.hostId&&<Icon name="crown"/>}</span>)}</div></section><button className="lobby-summary" onClick={openSettings}><span><Icon name="settings"/><b>{t("lobby.summary")}</b><small>{room.totalCards===null?"∞":room.totalCards} · {room.activeCategories.map(k=>t(categoryMeta[k].labelKey as TranslationKey)).join(" · ")}</small></span><Icon name="play"/></button>{isHost?<button className="primary-hero lobby-start" disabled={active.length<2} onClick={startGame}><Icon name="play"/><span><b>{t("lobby.start")}</b><small>{active.length<2?t("lobby.needPlayers"):t("lobby.activeReady",{count:active.length})}</small></span><Icon name="play"/></button>:<LiveWait text={t("lobby.waitHost")}/>}</section>;}
-function QRCodeView({value}:{value:string}){const [src,setSrc]=useState("");useEffect(()=>{let active=true;QRCode.toDataURL(value,{width:120,margin:1,color:{dark:"#151019",light:"#f8f5fb"}}).then(url=>{if(active)setSrc(url);});return()=>{active=false;};},[value]);return src?<img className="room-qr" src={src} alt="QR"/>:<span className="qr-placeholder"/>;}
-
-function Game({room,playerId,current,card,language,isHost,isMyTurn,me,voteDraft,maxSelections,allVotes,everyoneAnswered,responseCount,connectedCount,send,toggleVote,next,t}:{room:RoomState;playerId:string;current?:Player;card:Card|null;language:Language;isHost:boolean;isMyTurn:boolean;me?:Player;voteDraft:string[];maxSelections:number;allVotes:boolean;everyoneAnswered:boolean;responseCount:number;connectedCount:number;send:(m:object)=>void;toggleVote:(id:string)=>void;next:()=>void;t:T}){
-  const [opening,setOpening]=useState(false);
-  useEffect(()=>{if(room.card)setOpening(false);},[room.card,room.round]);
-  const reveal=()=>{if(opening)return;setOpening(true);setTimeout(()=>send({type:"revealCard"}),320);};
-  if(!room.card)return <section className="game-screen closed-state"><div className={`card-back ${isMyTurn?"active":""} ${opening?"opening":""}`}><img className="card-logo" src="/assets/shot-app-icon.png" alt="SHOT!"/><span>SHOT!</span></div>{isMyTurn?<button className="primary-action" disabled={opening} onClick={reveal}>{t("game.open")}<Icon name="play"/></button>:<LiveWait text={t("game.waitOpen",{name:current?.nickname??"—"})}/>}</section>;
-  if(!card)return <section className="game-screen"><p>{t("game.noCard")}</p></section>;
-  const localAnswer=playerId in room.responses?room.responses[playerId]:null,opponent=room.players.find(p=>p.id===room.duelOpponentId),needsDuel=card.kind==="duel"&&!opponent;
-  return <><section className="game-screen"><article key={`${room.round}-${card.id}`} className={`content-card kind-${card.kind} card-opening`}><header><span><Icon name={categoryMeta[card.kind].icon}/>{t(categoryMeta[card.kind].labelKey as TranslationKey)}</span></header><h1>{getCardText(card,language)}</h1>{opponent&&<div className="duel-pair"><PlayerFace player={current}/><Icon name="duel"/><PlayerFace player={opponent}/><span>{current?.nickname} · {opponent.nickname}</span></div>}</article>{!room.confirmed&&isMyTurn&&<button className="pass-link" disabled={(room.passes[playerId]??0)<1} onClick={()=>send({type:"skip"})}><Icon name="pass"/>{t("game.pass")} · {t("game.passLeft",{count:room.passes[playerId]??0})}</button>}
-    {needsDuel?<section className="action-panel"><h2>{t("mini.chooseOpponent")}</h2>{isMyTurn?<div className="player-choice-grid">{room.players.filter(p=>p.connected&&!p.spectator&&p.id!==playerId).map((p,i)=><button key={p.id} onClick={()=>send({type:"selectDuelOpponent",opponentId:p.id})}><PlayerFace player={p} index={i}/><span>{p.nickname}</span></button>)}</div>:<LiveWait text={t("mini.opponentWaiting",{name:current?.nickname??"—"})}/>}</section>:room.miniGame?<MiniGame key={`${room.round}-${room.miniGame.startedAt??"ready"}`} mini={room.miniGame} me={playerId} players={room.players} isHost={isHost} send={send} language={language} t={t}/>:card.kind==="vote"?<VotePanel room={room} playerId={playerId} draft={voteDraft} max={maxSelections} allVotes={allVotes} toggle={toggleVote} send={send} t={t}/>:<section className="action-panel"><header><div><small>{t("game.answer")}</small><b>{t("game.responses",{done:responseCount,total:connectedCount})}</b></div></header>{!me?.spectator?<div className="answer-grid"><button className={localAnswer===true?"selected drink":""} onClick={()=>send({type:"answer",drank:true})}><Icon name="shot"/><b>{t("game.drank")}</b></button><button className={localAnswer===false?"selected safe":""} onClick={()=>send({type:"answer",drank:false})}><Icon name="check"/><b>{t("game.notDrank")}</b></button></div>:<div className="spectator-note"><Icon name="eye"/><span>{t("players.spectator")}</span></div>}<LiveWait text={everyoneAnswered?t("game.everyoneAnswered"):t("game.waitAnswers")}/></section>}
-  </section>{isHost&&<div className="host-main-action">{room.confirmed?<button onClick={next}>{room.totalCards!==null&&room.round>=room.totalCards?t("game.finish"):t("game.next")}<Icon name="play"/></button>:!room.miniGame&&card.kind!=="vote"?<button disabled={!everyoneAnswered} onClick={()=>send({type:"confirm"})}>{t("game.confirm")}<Icon name="check"/></button>:card.kind==="vote"&&!room.confirmed?<button disabled={!allVotes} onClick={()=>send({type:"revealVotes"})}>{t("vote.result")}<Icon name="check"/></button>:null}</div>}</>;
+export default function Home() {
+  const socket = useRef<WebSocket | null>(null),
+    preferenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [language, setLanguage] = useState<Language>("tr"),
+    [nickname, setNickname] = useState(""),
+    [avatar, setAvatar] = useState("0"),
+    [joinCode, setJoinCode] = useState(""),
+    [roomCode, setRoomCode] = useState(""),
+    [playerId, setPlayerId] = useState(""),
+    [room, setRoom] = useState<RoomState | null>(null),
+    [connection, setConnection] = useState<
+      "idle" | "connecting" | "online" | "error"
+    >("idle"),
+    [error, setError] = useState(""),
+    [voteDraft, setVoteDraft] = useState<string[]>([]),
+    [playersOpen, setPlayersOpen] = useState(false),
+    [settingsOpen, setSettingsOpen] = useState(false),
+    [settingsSection, setSettingsSection] = useState<string | null>(null),
+    [soundOn, setSoundOn] = useState(true),
+    [vibrationOn, setVibrationOn] = useState(true),
+    [reduceMotion, setReduceMotion] = useState(false),
+    [copied, setCopied] = useState(false),
+    [confirmAction, setConfirmAction] = useState<{
+      label: string;
+      run: () => void;
+    } | null>(null),
+    [resultVisible, setResultVisible] = useState(false),
+    [googleClientId, setGoogleClientId] = useState(""),
+    [account, setAccount] = useState<AccountUser | null>(null),
+    [authToken, setAuthToken] = useState(""),
+    [authStatus, setAuthStatus] = useState<"idle" | "loading" | "error">(
+      "idle",
+    ),
+    [syncEnabled, setSyncEnabled] = useState(false);
+  const t = (
+    key: TranslationKey,
+    values: Record<string, string | number> = {},
+  ) => translate(language, key, values);
+  useEffect(() => {
+    const saved = localStorage.getItem("shot-language") as Language | null,
+      device = navigator.language.toLowerCase().startsWith("tr") ? "tr" : "en",
+      lang = saved ?? device;
+    setLanguage(lang);
+    document.documentElement.lang = lang;
+    setNickname(localStorage.getItem("shot-nickname") || randomName(lang));
+    setAvatar(
+      localStorage.getItem("shot-avatar") ||
+        String(Math.floor(Math.random() * 12)),
+    );
+    setSoundOn(localStorage.getItem("shot-sound") !== "off");
+    setVibrationOn(localStorage.getItem("shot-vibration") !== "off");
+    setReduceMotion(localStorage.getItem("shot-reduce-motion") === "on");
+    const code = new URLSearchParams(location.search).get("room");
+    if (code) setJoinCode(code.replace(/\D/g, "").slice(0, 6));
+    fetch(`${API}/auth/config`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) =>
+        setGoogleClientId(
+          typeof data?.clientId === "string" ? data.clientId : "",
+        ),
+      )
+      .catch(() => undefined);
+    const token = localStorage.getItem("shot-auth-token") || "";
+    if (token) {
+      setAuthStatus("loading");
+      fetch(`${API}/auth/session`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(async (response) => {
+          if (!response.ok) throw new Error();
+          return response.json() as Promise<AccountResponse>;
+        })
+        .then((data) => {
+          applySavedPreferences(data.preferences);
+          setAccount(data.user);
+          setAuthToken(token);
+          setSyncEnabled(true);
+          setAuthStatus("idle");
+        })
+        .catch(() => {
+          localStorage.removeItem("shot-auth-token");
+          setAuthStatus("idle");
+        });
+    }
+    return () => {
+      socket.current?.close();
+      if (preferenceTimer.current) clearTimeout(preferenceTimer.current);
+    };
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    localStorage.setItem("shot-language", language);
+  }, [language]);
+  useEffect(() => {
+    if (nickname) localStorage.setItem("shot-nickname", nickname);
+  }, [nickname]);
+  useEffect(() => {
+    localStorage.setItem("shot-avatar", avatar);
+  }, [avatar]);
+  useEffect(() => {
+    localStorage.setItem("shot-sound", soundOn ? "on" : "off");
+  }, [soundOn]);
+  useEffect(() => {
+    localStorage.setItem("shot-vibration", vibrationOn ? "on" : "off");
+  }, [vibrationOn]);
+  useEffect(() => {
+    localStorage.setItem("shot-reduce-motion", reduceMotion ? "on" : "off");
+  }, [reduceMotion]);
+  useEffect(() => {
+    if (!syncEnabled || !authToken) return;
+    if (preferenceTimer.current) clearTimeout(preferenceTimer.current);
+    preferenceTimer.current = setTimeout(() => {
+      fetch(`${API}/preferences`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          nickname: nickname.trim() || randomName(language),
+          avatar,
+          language,
+          soundOn,
+          vibrationOn,
+          reduceMotion,
+        } satisfies SavedPreferences),
+      })
+        .then((response) => {
+          if (response.status === 401) clearAccount();
+        })
+        .catch(() => undefined);
+    }, 650);
+    return () => {
+      if (preferenceTimer.current) clearTimeout(preferenceTimer.current);
+    };
+  }, [
+    nickname,
+    avatar,
+    language,
+    soundOn,
+    vibrationOn,
+    reduceMotion,
+    syncEnabled,
+    authToken,
+  ]);
+  useEffect(() => {
+    if (!room?.resultAt) return;
+    setResultVisible(true);
+    const age = Date.now() - room.resultAt;
+    if (age > 3500) {
+      setResultVisible(false);
+      return;
+    }
+    const timer = setTimeout(
+      () => setResultVisible(false),
+      Math.max(300, 2800 - age),
+    );
+    return () => clearTimeout(timer);
+  }, [room?.resultAt]);
+  const players = room?.players ?? [],
+    me = players.find((p) => p.id === playerId),
+    isHost = room?.hostId === playerId,
+    current = room?.players[room.currentPlayer],
+    isMyTurn = current?.id === playerId,
+    activePlayers = players.filter((p) => p.connected && !p.spectator),
+    connectedCount = activePlayers.length,
+    responseCount = Object.keys(room?.responses ?? {}).length,
+    everyoneAnswered = connectedCount > 0 && responseCount === connectedCount,
+    card = room?.card
+      ? (cards.find((c) => c.id === room.card!.id) ?? null)
+      : null,
+    maxSelections = Math.min(
+      card?.maxSelections ?? 1,
+      Math.max(
+        1,
+        activePlayers.length - (room?.settings.allowSelfVote ? 0 : 1),
+      ),
+    ),
+    allVotes = Boolean(
+      room && activePlayers.every((p) => room.votedPlayerIds.includes(p.id)),
+    ),
+    shareUrl =
+      typeof window === "undefined"
+        ? ""
+        : `${location.origin}?room=${roomCode}`;
+  function send(message: object) {
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      socket.current.send(JSON.stringify(message));
+      if (
+        ["revealCard", "answer", "vote", "miniAction"].includes(
+          String((message as { type?: string }).type),
+        )
+      )
+        feedback();
+    }
+  }
+  function feedback() {
+    if (vibrationOn) navigator.vibrate?.(22);
+    if (soundOn)
+      try {
+        const AudioClass =
+            window.AudioContext ||
+            (
+              window as typeof window & {
+                webkitAudioContext: typeof AudioContext;
+              }
+            ).webkitAudioContext,
+          ctx = new AudioClass(),
+          osc = ctx.createOscillator(),
+          gain = ctx.createGain();
+        osc.frequency.value = 480;
+        gain.gain.value = 0.025;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.05);
+      } catch {
+        /* unsupported */
+      }
+  }
+  function currentPreferences(): SavedPreferences {
+    return {
+      nickname: nickname.trim() || randomName(language),
+      avatar,
+      language,
+      soundOn,
+      vibrationOn,
+      reduceMotion,
+    };
+  }
+  function applySavedPreferences(preferences: SavedPreferences) {
+    setNickname(preferences.nickname);
+    setAvatar(preferences.avatar);
+    setLanguage(preferences.language);
+    setSoundOn(preferences.soundOn);
+    setVibrationOn(preferences.vibrationOn);
+    setReduceMotion(preferences.reduceMotion);
+  }
+  function clearAccount() {
+    localStorage.removeItem("shot-auth-token");
+    setAccount(null);
+    setAuthToken("");
+    setSyncEnabled(false);
+    setAuthStatus("idle");
+  }
+  async function handleGoogleCredential(credential: string) {
+    setAuthStatus("loading");
+    try {
+      const response = await fetch(`${API}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential, preferences: currentPreferences() }),
+      });
+      if (!response.ok) throw new Error();
+      const data = (await response.json()) as AccountResponse;
+      if (!data.token) throw new Error();
+      localStorage.setItem("shot-auth-token", data.token);
+      applySavedPreferences(data.preferences);
+      setAccount(data.user);
+      setAuthToken(data.token);
+      setSyncEnabled(true);
+      setAuthStatus("idle");
+    } catch {
+      setAuthStatus("error");
+    }
+  }
+  async function signOut() {
+    const token = authToken;
+    clearAccount();
+    disableGoogleAutoSelect();
+    if (token)
+      fetch(`${API}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => undefined);
+  }
+  async function submitFeedback(message: string, rating: number | null) {
+    const response = await fetch(`${API}/feedback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify({
+        message,
+        rating,
+        language,
+        appVersion: "web-1.0",
+      }),
+    });
+    if (!response.ok) throw new Error("feedback_failed");
+  }
+  async function createRoom() {
+    if (!nickname.trim()) {
+      setError(t("room.nameError"));
+      return;
+    }
+    setConnection("connecting");
+    setError("");
+    try {
+      const response = await fetch(`${API}/rooms`, { method: "POST" });
+      if (!response.ok) throw new Error();
+      const data = (await response.json()) as { code: string };
+      connect(data.code);
+    } catch {
+      setConnection("error");
+      setError(t("room.createError"));
+    }
+  }
+  function joinRoom() {
+    if (!nickname.trim()) return setError(t("room.nameError"));
+    if (!/^\d{6}$/.test(joinCode)) return setError(t("room.codeError"));
+    connect(joinCode);
+  }
+  function connect(code: string) {
+    socket.current?.close();
+    setConnection("connecting");
+    setRoomCode(code);
+    const saved = localStorage.getItem(`shot-player-${code}`) || "",
+      url = `${API.replace("https", "wss")}/rooms/${code}/connect?nickname=${encodeURIComponent(nickname.trim())}&avatar=${avatar}${saved ? `&playerId=${saved}` : ""}`,
+      ws = new WebSocket(url);
+    socket.current = ws;
+    let welcomed = false;
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "welcome") {
+        welcomed = true;
+        setPlayerId(msg.playerId);
+        localStorage.setItem(`shot-player-${code}`, msg.playerId);
+        setRoom(msg.state);
+        setConnection("online");
+      }
+      if (msg.type === "state") setRoom(msg.state);
+    };
+    ws.onerror = () => {
+      if (!welcomed) {
+        setConnection("error");
+        setError(t("room.notFound"));
+      }
+    };
+    ws.onclose = () => {
+      if (!welcomed) {
+        setRoom(null);
+        setConnection("error");
+        setError(t("room.notFound"));
+      } else setConnection("idle");
+    };
+  }
+  function leave() {
+    socket.current?.close();
+    setRoom(null);
+    setRoomCode("");
+    setPlayerId("");
+    setConnection("idle");
+    setPlayersOpen(false);
+    setSettingsOpen(false);
+    history.replaceState({}, "", location.pathname);
+  }
+  function startGame() {
+    const serverCards = cards.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      game: c.game,
+      level: c.level,
+      maxSelections: c.maxSelections,
+      outcome: c.outcome,
+      requiresPhone:
+        c.kind === "duel" && /telefon|mesaj|fotoğraf|galeri/i.test(c.text),
+      trivia:
+        c.kind === "duel" && /başkent|ülke|şehir|bilgi|harf/i.test(c.text),
+      groupVote: c.kind === "duel" && /grup|oylama|oy versin/i.test(c.text),
+    }));
+    send({ type: "start", cards: serverCards });
+  }
+  async function copyRoom() {
+    await navigator.clipboard?.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  }
+  function randomize() {
+    setNickname(randomName(language));
+    setAvatar(String(Math.floor(Math.random() * 12)));
+  }
+  function changeLanguage(lang: Language) {
+    setLanguage(lang);
+    document.documentElement.lang = lang;
+  }
+  function toggleVote(id: string) {
+    if (room?.myVote.length || room?.voteRevealed) return;
+    setVoteDraft((old) =>
+      old.includes(id)
+        ? old.filter((x) => x !== id)
+        : old.length < maxSelections
+          ? [...old, id]
+          : maxSelections === 1
+            ? [id]
+            : old,
+    );
+  }
+  function next() {
+    setVoteDraft([]);
+    setResultVisible(false);
+    send({ type: "next" });
+  }
+  function critical(label: string, run: () => void) {
+    setConfirmAction({ label, run });
+  }
+  const shellClass = `shot-app phase-${room?.phase ?? "welcome"} ${reduceMotion ? "reduce-motion" : ""}`;
+  return (
+    <main className={shellClass}>
+      {!room ? (
+        <Welcome
+          language={language}
+          nickname={nickname}
+          avatar={avatar}
+          joinCode={joinCode}
+          connection={connection}
+          error={error}
+          account={account}
+          googleClientId={googleClientId}
+          authStatus={authStatus}
+          onGoogleCredential={handleGoogleCredential}
+          signOut={signOut}
+          setNickname={setNickname}
+          setAvatar={setAvatar}
+          setJoinCode={setJoinCode}
+          setLanguage={changeLanguage}
+          randomize={randomize}
+          createRoom={createRoom}
+          joinRoom={joinRoom}
+          t={t}
+        />
+      ) : (
+        <>
+          <TopBar
+            room={room}
+            roomCode={roomCode}
+            current={current}
+            isMyTurn={isMyTurn}
+            isHost={isHost}
+            connection={connection}
+            onPlayers={() => setPlayersOpen(true)}
+            onSettings={() => {
+              setSettingsSection(null);
+              setSettingsOpen(true);
+            }}
+            onRounds={() => {
+              setSettingsSection("length");
+              setSettingsOpen(true);
+            }}
+            t={t}
+          />
+          {room.phase === "lobby" ? (
+            <Lobby
+              room={room}
+              roomCode={roomCode}
+              shareUrl={shareUrl}
+              isHost={isHost}
+              copied={copied}
+              copyRoom={copyRoom}
+              startGame={startGame}
+              openSettings={() => setSettingsOpen(true)}
+              t={t}
+            />
+          ) : room.phase === "finished" ? (
+            <Finish room={room} leave={leave} t={t} />
+          ) : (
+            <Game
+              room={room}
+              playerId={playerId}
+              current={current}
+              card={card}
+              language={language}
+              isHost={isHost}
+              isMyTurn={isMyTurn}
+              me={me}
+              voteDraft={voteDraft}
+              maxSelections={maxSelections}
+              allVotes={allVotes}
+              everyoneAnswered={everyoneAnswered}
+              responseCount={responseCount}
+              connectedCount={connectedCount}
+              send={send}
+              toggleVote={toggleVote}
+              next={next}
+              t={t}
+            />
+          )}
+          {playersOpen && (
+            <PlayersDrawer
+              room={room}
+              playerId={playerId}
+              isHost={isHost}
+              close={() => setPlayersOpen(false)}
+              send={send}
+              critical={critical}
+              t={t}
+            />
+          )}
+          {settingsOpen && (
+            <SettingsSheet
+              room={room}
+              language={language}
+              isHost={isHost}
+              section={settingsSection}
+              setSection={setSettingsSection}
+              close={() => setSettingsOpen(false)}
+              send={send}
+              soundOn={soundOn}
+              setSoundOn={setSoundOn}
+              vibrationOn={vibrationOn}
+              setVibrationOn={setVibrationOn}
+              reduceMotion={reduceMotion}
+              setReduceMotion={setReduceMotion}
+              setLanguage={changeLanguage}
+              leave={leave}
+              critical={critical}
+              account={account}
+              googleClientId={googleClientId}
+              authStatus={authStatus}
+              onGoogleCredential={handleGoogleCredential}
+              signOut={signOut}
+              submitFeedback={submitFeedback}
+              t={t}
+            />
+          )}
+          {room.phase === "paused" && (
+            <div className="pause-overlay">
+              <Icon name="pause" />
+              <h2>{t("game.paused")}</h2>
+              {isHost && (
+                <button onClick={() => send({ type: "pause" })}>
+                  {t("game.resume")}
+                </button>
+              )}
+            </div>
+          )}
+          {room.confirmed && room.turnResult && resultVisible && (
+            <ShotResult
+              room={room}
+              players={players}
+              isHost={isHost}
+              next={next}
+              close={() => setResultVisible(false)}
+              t={t}
+            />
+          )}
+        </>
+      )}
+      {confirmAction && (
+        <ConfirmDialog
+          action={confirmAction}
+          close={() => setConfirmAction(null)}
+          t={t}
+        />
+      )}
+    </main>
+  );
 }
 
-function VotePanel({room,playerId,draft,max,allVotes,toggle,send,t}:{room:RoomState;playerId:string;draft:string[];max:number;allVotes:boolean;toggle:(id:string)=>void;send:(m:object)=>void;t:T}){const locked=room.myVote.length>0;return <section className="action-panel vote-panel"><header><div><small>{t("vote.title")}</small><h2>{room.voteRound>0?t("vote.revote"):t("vote.choose",{count:max})}</h2></div><b>{room.votedPlayerIds.length}/{room.players.filter(p=>p.connected&&!p.spectator).length}</b></header>{room.voteRevealed?<div className="vote-result-list">{room.players.filter(p=>room.settings.voteResultMode==="all"||room.voteWinners.includes(p.id)).sort((a,b)=>(room.voteTally[b.id]??0)-(room.voteTally[a.id]??0)).map((p,i)=><div key={p.id} className={room.voteWinners.includes(p.id)?"winner":""}><PlayerFace player={p} index={i}/><span>{p.nickname}</span>{room.settings.showVoteDistribution&&<b>{t("vote.votes",{count:room.voteTally[p.id]??0})}</b>}</div>)}</div>:<><p>{room.settings.votePrivacy==="open"?t("vote.openBallot"):t("vote.secretBallot")}</p><div className="player-choice-grid">{room.players.filter(p=>p.connected&&!p.spectator&&(room.settings.allowSelfVote||p.id!==playerId)).map((p,i)=>{const selected=(locked?room.myVote:draft).includes(p.id);return <button key={p.id} className={selected?"selected":""} disabled={locked} onClick={()=>toggle(p.id)}><PlayerFace player={p} index={i}/><span>{p.nickname}</span>{selected&&<Icon name="check"/>}</button>})}</div><button className="primary-action" disabled={locked||draft.length!==max} onClick={()=>send({type:"vote",selections:draft})}>{locked?t("vote.saved"):t("vote.send")}</button><LiveWait text={allVotes?t("game.everyoneAnswered"):t("vote.wait")}/></>}</section>;}
-
-function PlayersDrawer({room,playerId,isHost,close,send,critical,t}:{room:RoomState;playerId:string;isHost:boolean;close:()=>void;send:(m:object)=>void;critical:(l:string,r:()=>void)=>void;t:T}){const move=(id:string,direction:-1|1)=>{const ids=room.players.map(p=>p.id),index=ids.indexOf(id),target=index+direction;if(index<0||target<0||target>=ids.length)return;[ids[index],ids[target]]=[ids[target],ids[index]];send({type:"reorder",playerIds:ids});};return <div className="drawer-overlay" onClick={close}><aside className="players-drawer" onClick={e=>e.stopPropagation()}><header><div><small>{t("common.live")}</small><h2>{t("players.title")}</h2></div><button onClick={close}><Icon name="close"/></button></header><div className="drawer-list">{room.players.map((p,index)=><article key={p.id} className={`${p.id===playerId?"you":""} ${p.spectator?"spectator":""}`}><b className="position">{p.spectator?"—":index+1}</b><PlayerFace player={p} index={index}/><div><strong>{p.nickname}</strong><small>{p.id===room.hostId?t("players.host"):p.spectator?t("players.spectator"):p.connected?t("players.online"):t("players.reconnecting")}</small></div><span className="shot-total">{p.shots}<small>{t("players.shot")}</small></span>{isHost&&p.id!==playerId&&<details><summary><Icon name="more"/></summary><div><button disabled={index===0} onClick={()=>move(p.id,-1)}><Icon name="back"/>{t("players.moveUp")}</button><button disabled={index===room.players.length-1} onClick={()=>move(p.id,1)}><Icon name="play"/>{t("players.moveDown")}</button><button onClick={()=>send({type:"spectator",playerId:p.id,spectator:!p.spectator})}><Icon name="eye"/>{p.spectator?t("settings.activate"):t("settings.spectate")}</button><button onClick={()=>critical(t("settings.transfer"),()=>send({type:"transfer",playerId:p.id}))}><Icon name="crown"/>{t("settings.transfer")}</button><button className="danger" onClick={()=>critical(t("settings.kick"),()=>send({type:"kick",playerId:p.id}))}><Icon name="leave"/>{t("settings.kick")}</button></div></details>}</article>)}</div></aside></div>;}
-
-const settingSections:Array<{id:string;key:TranslationKey;icon:IconName}>=[{id:"future",key:"settings.future",icon:"spark"},{id:"categories",key:"settings.categories",icon:"condition"},{id:"length",key:"settings.length",icon:"five_seconds"},{id:"content",key:"settings.content",icon:"warning"},{id:"digital",key:"settings.digital",icon:"digital"},{id:"duels",key:"settings.duels",icon:"duel"},{id:"voting",key:"settings.voting",icon:"vote"},{id:"management",key:"settings.management",icon:"settings"},{id:"audio",key:"settings.audio",icon:"volume"},{id:"language",key:"profile.language",icon:"language"},{id:"leave",key:"settings.leave",icon:"leave"}];
-function SettingsSheet({room,language,isHost,section,setSection,close,send,soundOn,setSoundOn,vibrationOn,setVibrationOn,reduceMotion,setReduceMotion,setLanguage,leave,critical,t}:{room:RoomState;language:Language;isHost:boolean;section:string|null;setSection:(v:string|null)=>void;close:()=>void;send:(m:object)=>void;soundOn:boolean;setSoundOn:(v:boolean)=>void;vibrationOn:boolean;setVibrationOn:(v:boolean)=>void;reduceMotion:boolean;setReduceMotion:(v:boolean)=>void;setLanguage:(v:Language)=>void;leave:()=>void;critical:(l:string,r:()=>void)=>void;t:T}){
-  const cfg=(value:object)=>send({type:"configure",...value});const toggleCategory=(kind:CardKind)=>{const active=room.activeCategories.includes(kind),next=active?room.activeCategories.filter(k=>k!==kind):[...room.activeCategories,kind];if(next.length)cfg({categories:next});};
-  const setWeight=(kind:CardKind,value:number)=>{if(!room.activeCategories.includes(kind))return;const weights={...room.settings.categoryWeights},others=room.activeCategories.filter(k=>k!==kind),rest=100-value,current=others.reduce((sum,k)=>sum+weights[k],0);weights[kind]=value;let remaining=rest;others.forEach((key,index)=>{weights[key]=index===others.length-1?remaining:Math.max(0,Math.round((current?weights[key]/current:1/others.length)*rest));remaining-=weights[key];});cfg({categoryWeights:weights});};
-  const localSection=section==="leave"?null:section,visibleSections=(isHost?settingSections:settingSections.filter(item=>["audio","leave"].includes(item.id))).filter(item=>item.id!=="language");
-  return <div className="sheet-overlay" onClick={close}><section className="settings-sheet" onClick={e=>e.stopPropagation()}><header><button className="back-button" onClick={()=>localSection?setSection(null):close()}><Icon name={localSection?"back":"close"}/></button><div><small>SHOT!</small><h2>{localSection?t(settingSections.find(x=>x.id===localSection)!.key):t("settings.title")}</h2></div></header>{!localSection?<nav className="settings-menu">{visibleSections.map(item=><button key={item.id} className={item.id==="leave"?"danger":""} onClick={()=>item.id==="leave"?critical(t("settings.leave"),leave):setSection(item.id)}><Icon name={item.icon}/><span>{t(item.key)}</span><Icon name="play"/></button>)}<button onClick={()=>setSection("language")}><Icon name="language"/><span>{t("profile.language")}</span><b>{language==="tr"?"TR":"EN"}</b></button></nav>:<div className="settings-content"><p className="apply-note">{t("settings.applyNext")}</p>{localSection==="future"&&<><SettingToggle label={t("settings.hostConfirm")} value={room.settings.requireHostConfirm} onChange={()=>cfg({requireHostConfirm:!room.settings.requireHostConfirm})}/><SettingToggle label={t("settings.autoSave")} value={room.settings.autoConfirm} onChange={()=>cfg({autoConfirm:!room.settings.autoConfirm})}/><SettingToggle label={t("settings.autoAdvance")} value={room.settings.autoAdvance} onChange={()=>cfg({autoAdvance:!room.settings.autoAdvance})}/><SettingToggle label={t("settings.noRepeat")} value={room.settings.preventMiniRepeat} onChange={()=>cfg({preventMiniRepeat:!room.settings.preventMiniRepeat})}/></>}{localSection==="categories"&&<><div className="category-settings">{(Object.keys(categoryMeta) as CardKind[]).map(kind=><article key={kind} className={room.activeCategories.includes(kind)?"active":""}><button disabled={!isHost} onClick={()=>toggleCategory(kind)}><Icon name={categoryMeta[kind].icon}/><span>{t(categoryMeta[kind].labelKey as TranslationKey)}</span><Icon name={room.activeCategories.includes(kind)?"check":"plus"}/></button>{room.activeCategories.includes(kind)&&<label><span>{t("category.weight",{value:room.settings.categoryWeights[kind]})}</span><input type="range" min="0" max="100" step="5" value={room.settings.categoryWeights[kind]} disabled={!isHost||room.activeCategories.length===1} onChange={e=>setWeight(kind,Number(e.target.value))}/></label>}</article>)}</div><strong className="weight-total">{t("category.total",{value:room.activeCategories.reduce((sum,k)=>sum+room.settings.categoryWeights[k],0)})}</strong></>}{localSection==="length"&&<><SettingRow label={t("settings.rounds")}><div className="number-stepper"><button onClick={()=>cfg({totalCards:Math.max(room.round,(room.totalCards??room.round)-5)})}>−</button><b>{room.totalCards??"∞"}</b><button onClick={()=>cfg({totalCards:(room.totalCards??room.round)+5})}>+</button></div></SettingRow><SettingToggle label={t("settings.infinite")} value={room.totalCards===null} onChange={()=>cfg({totalCards:room.totalCards===null?Math.max(30,room.round):null})}/>{room.phase!=="lobby"&&<button className="secondary-action" onClick={()=>cfg({totalCards:room.round})}>{t("settings.endAt")}</button>}<SettingRow label={t("settings.passes")}><Segmented value={room.passLimit} items={[{value:1,label:"1"},{value:2,label:"2"}]} onChange={value=>cfg({passLimit:value})}/></SettingRow></>}{localSection==="content"&&<Segmented value={room.settings.contentLevel} items={(["light","normal","hard"] as ContentLevel[]).map(value=>({value,label:t(`content.${value}` as TranslationKey)}))} onChange={value=>cfg({contentLevel:value})}/>} {localSection==="digital"&&<><SettingToggle label={t("settings.digitalAll")} value={room.activeCategories.includes("digital")} onChange={()=>toggleCategory("digital")}/><SettingToggle label={t("settings.twoPlayer")} value={room.settings.digitalTwoPlayer} onChange={()=>cfg({digitalTwoPlayer:!room.settings.digitalTwoPlayer})}/><SettingToggle label={t("settings.groupGames")} value={room.settings.digitalGroup} onChange={()=>cfg({digitalGroup:!room.settings.digitalGroup})}/><SettingToggle label={t("settings.noRepeat")} value={room.settings.preventMiniRepeat} onChange={()=>cfg({preventMiniRepeat:!room.settings.preventMiniRepeat})}/><div className="mini-toggle-grid">{miniGameKinds.map(game=>{const active=room.settings.activeMiniGames.includes(game);return <button key={game} className={active?"active":""} onClick={()=>cfg({activeMiniGames:active?room.settings.activeMiniGames.filter(x=>x!==game):[...room.settings.activeMiniGames,game]})}><Icon name={game}/><span>{t(`miniName.${game}` as TranslationKey)}</span><Icon name={active?"check":"plus"}/></button>})}</div>{room.miniGame&&!room.confirmed&&<div className="management-grid"><button onClick={()=>send({type:"restartMini"})}><Icon name="redo"/>{t("mini.restart")}</button><button onClick={()=>critical(t("mini.cancel"),()=>send({type:"cancelMini"}))}><Icon name="close"/>{t("mini.cancel")}</button>{room.miniGame.participantIds.filter(id=>id!==room.hostId).map(id=><button key={id} onClick={()=>send({type:"excludeMiniPlayer",playerId:id})}><Icon name="eye"/>{t("mini.remove")} · {room.players.find(p=>p.id===id)?.nickname}</button>)}</div>}</>}{localSection==="duels"&&<><SettingRow label={t("settings.duelOpponent")}><Segmented value={room.settings.duelOpponentMode} items={[{value:"opener",label:t("settings.openerChooses")},{value:"system",label:t("settings.systemChooses")}]} onChange={value=>cfg({duelOpponentMode:value})}/></SettingRow><SettingToggle label={t("settings.noConsecutiveOpponent")} value={room.settings.preventOpponentRepeat} onChange={()=>cfg({preventOpponentRepeat:!room.settings.preventOpponentRepeat})}/><SettingToggle label={t("settings.phoneCards")} value={room.settings.allowPhoneCards} onChange={()=>cfg({allowPhoneCards:!room.settings.allowPhoneCards})}/><SettingToggle label={t("settings.trivia")} value={room.settings.allowTrivia} onChange={()=>cfg({allowTrivia:!room.settings.allowTrivia})}/><SettingToggle label={t("settings.groupVoteDuels")} value={room.settings.allowGroupVoteDuels} onChange={()=>cfg({allowGroupVoteDuels:!room.settings.allowGroupVoteDuels})}/></>}{localSection==="voting"&&<><SettingRow label={t("settings.votePrivacy")}><Segmented value={room.settings.votePrivacy} items={[{value:"secret",label:t("settings.secret")},{value:"open",label:t("settings.open")}]} onChange={value=>cfg({votePrivacy:value})}/></SettingRow><SettingToggle label={t("settings.distribution")} value={room.settings.showVoteDistribution} onChange={()=>cfg({showVoteDistribution:!room.settings.showVoteDistribution})}/><SettingRow label={t("settings.allResults")}><Segmented value={room.settings.voteResultMode} items={[{value:"all",label:t("settings.allResults")},{value:"winner",label:t("settings.winnerOnly")}]} onChange={value=>cfg({voteResultMode:value})}/></SettingRow><SettingToggle label={t("settings.selfVote")} value={room.settings.allowSelfVote} onChange={()=>cfg({allowSelfVote:!room.settings.allowSelfVote})}/><SettingRow label={t("settings.tie")}><Segmented value={room.settings.voteTie} items={[{value:"drink",label:t("settings.tieDrink")},{value:"revote",label:t("settings.tieRevote")}]} onChange={value=>cfg({voteTie:value})}/></SettingRow></>}{localSection==="management"&&<><div className="management-grid"><button onClick={()=>send({type:"pause"})}><Icon name={room.phase==="paused"?"play":"pause"}/>{room.phase==="paused"?t("game.resume"):t("settings.pause")}</button><button disabled={!room.confirmed} onClick={()=>critical(t("settings.undo"),()=>send({type:"undoResult"}))}><Icon name="back"/>{t("settings.undo")}</button><button disabled={!room.card} onClick={()=>critical(t("settings.replay"),()=>send({type:"replayCard"}))}><Icon name="redo"/>{t("settings.replay")}</button><button disabled={!room.card||room.confirmed} onClick={()=>send({type:"redrawCard"})}><Icon name="spark"/>{t("settings.redraw")}</button><button onClick={()=>critical(t("settings.skipTurn"),()=>send({type:"skipTurn"}))}><Icon name="pass"/>{t("settings.skipTurn")}</button><button className="danger" onClick={()=>critical(t("settings.end"),()=>send({type:"endGame"}))}><Icon name="leave"/>{t("settings.end")}</button></div><h3>{t("settings.shots")}</h3>{room.players.map(p=><SettingRow key={p.id} label={p.nickname}><div className="number-stepper"><button onClick={()=>send({type:"shots",shots:{[p.id]:Math.max(0,p.shots-1)}})}>−</button><b>{p.shots}</b><button onClick={()=>send({type:"shots",shots:{[p.id]:p.shots+1}})}>+</button></div></SettingRow>)}{room.confirmed&&room.turnResult&&<><h3>{t("mini.losers")}</h3>{room.players.filter(p=>!p.spectator).map(p=><SettingToggle key={p.id} label={p.nickname} value={room.turnResult!.drinkers.includes(p.id)} onChange={()=>send({type:"adjustResult",playerId:p.id,drinks:!room.turnResult!.drinkers.includes(p.id)})}/>)}</>}</>}{localSection==="audio"&&<><SettingToggle label={t("settings.sound")} value={soundOn} onChange={()=>setSoundOn(!soundOn)}/><SettingToggle label={t("settings.vibration")} value={vibrationOn} onChange={()=>setVibrationOn(!vibrationOn)}/><SettingToggle label={t("settings.reduceMotion")} value={reduceMotion} onChange={()=>setReduceMotion(!reduceMotion)}/></>}{localSection==="language"&&<Segmented value={language} items={[{value:"tr",label:t("language.tr")},{value:"en",label:t("language.en") }]} onChange={setLanguage}/>}</div>}</section></div>;
+function randomName(language: Language) {
+  const [first, last] = randomNameParts[language];
+  return `${first[Math.floor(Math.random() * first.length)]} ${last[Math.floor(Math.random() * last.length)]}`;
 }
-function SettingToggle({label,value,onChange}:{label:string;value:boolean;onChange:()=>void}){return <div className="setting-row"><span>{label}</span><Toggle value={value} onChange={onChange} label={label}/></div>;}function SettingRow({label,children}:{label:string;children:React.ReactNode}){return <div className="setting-row"><span>{label}</span>{children}</div>;}
 
-function ShotResult({room,players,isHost,next,close,t}:{room:RoomState;players:Player[];isHost:boolean;next:()=>void;close:()=>void;t:T}){const drinkers=room.turnResult?.drinkers??[],visible=drinkers.slice(0,4),name=(id:string)=>players.find(p=>p.id===id)?.nickname??"—";return <div className="result-overlay" onClick={close}><section className={`shot-result ${drinkers.length?"has-shots":"safe"}`} onClick={e=>e.stopPropagation()}>{drinkers.length?<><Icon name="shot"/><small>{drinkers.length===1?t("result.single",{name:name(drinkers[0])}):t("result.taking")}</small><div className="result-avatars">{visible.map((id,index)=>{const p=players.find(x=>x.id===id);return <div key={id}><PlayerFace player={p} index={index}/><b>{p?.nickname}</b><strong><span>{room.resultPreviousShots[id]??Math.max(0,(p?.shots??1)-1)}</span> → {p?.shots}</strong></div>})}{drinkers.length>4&&<em>{t("result.more",{count:drinkers.length-4})}</em>}</div><h2>+1 SHOT</h2>{room.turnResult?.reason==="mini:trust"&&room.miniGame&&<div className="trust-summary">{room.miniGame.participantIds.map(id=><span key={id}>{t("result.choice",{name:name(id),choice:String(((room.miniGame!.details.choices??{}) as Record<string,string>)[id])==="trust"?t("mini.trust"):t("mini.betray")})}</span>)}</div>}</>:<><Icon name="check"/><h2>{t("result.safe")}</h2><p>{t("result.everyoneSafe")}</p></>}<div className="result-actions"><button onClick={close}>{t("result.skip")}</button>{isHost&&!room.settings.autoAdvance&&<button className="primary" onClick={next}>{t("result.continue")}</button>}</div></section></div>;}
-function Finish({room,leave,t}:{room:RoomState;leave:()=>void;t:T}){return <section className="finish-screen"><Icon name="check"/><h1>{t("game.finished")}</h1><div>{[...room.players].sort((a,b)=>b.shots-a.shots).map((p,index)=><article key={p.id}><b>{index+1}</b><PlayerFace player={p} index={index}/><span>{p.nickname}</span><strong>{p.shots} {t("players.shot")}</strong></article>)}</div><button className="primary-action" onClick={leave}>{t("game.home")}</button></section>;}
-function ConfirmDialog({action,close,t}:{action:{label:string;run:()=>void};close:()=>void;t:T}){return <div className="confirm-overlay"><section><Icon name="warning"/><h2>{t("settings.confirmTitle")}</h2><p>{action.label}</p><small>{t("settings.confirmText")}</small><div><button onClick={close}>{t("settings.cancel")}</button><button className="danger" onClick={()=>{action.run();close();}}>{t("settings.accept")}</button></div></section></div>;}
+type T = (
+  key: TranslationKey,
+  values?: Record<string, string | number>,
+) => string;
+function Welcome({
+  language,
+  nickname,
+  avatar,
+  joinCode,
+  connection,
+  error,
+  account,
+  googleClientId,
+  authStatus,
+  onGoogleCredential,
+  signOut,
+  setNickname,
+  setAvatar,
+  setJoinCode,
+  setLanguage,
+  randomize,
+  createRoom,
+  joinRoom,
+  t,
+}: {
+  language: Language;
+  nickname: string;
+  avatar: string;
+  joinCode: string;
+  connection: string;
+  error: string;
+  account: AccountUser | null;
+  googleClientId: string;
+  authStatus: "idle" | "loading" | "error";
+  onGoogleCredential: (credential: string) => void;
+  signOut: () => void;
+  setNickname: (v: string) => void;
+  setAvatar: (v: string) => void;
+  setJoinCode: (v: string) => void;
+  setLanguage: (v: Language) => void;
+  randomize: () => void;
+  createRoom: () => void;
+  joinRoom: () => void;
+  t: T;
+}) {
+  return (
+    <section className="welcome-screen">
+      <header className="brand-row">
+        <Brand />
+        <button
+          className="language-pill"
+          onClick={() => setLanguage(language === "tr" ? "en" : "tr")}
+        >
+          <Icon name="language" />
+          {language === "tr" ? "EN" : "TR"}
+        </button>
+      </header>
+      <div className="hero">
+        <small>{t("app.tagline")}</small>
+        <h1>{t("app.title")}</h1>
+        <p>{t("app.subtitle")}</p>
+      </div>
+      <section className="profile-card">
+        <div className="profile-main">
+          <PlayerFace
+            player={{
+              id: "preview",
+              nickname,
+              avatar,
+              shots: 0,
+              connected: true,
+              spectator: false,
+            }}
+          />
+          <label>
+            <span>{t("profile.name")}</span>
+            <input
+              value={nickname}
+              maxLength={24}
+              onChange={(e) => setNickname(e.target.value)}
+            />
+          </label>
+          <button
+            className="icon-control"
+            onClick={randomize}
+            aria-label={t("profile.random")}
+          >
+            <Icon name="shuffle" />
+          </button>
+        </div>
+        <div className="avatar-row">
+          {Array.from({ length: 12 }, (_, index) => (
+            <button
+              key={index}
+              className={avatar === String(index) ? "active" : ""}
+              onClick={() => setAvatar(String(index))}
+            >
+              <Avatar seed={index} />
+            </button>
+          ))}
+        </div>
+      </section>
+      <AccountPanel
+        account={account}
+        googleClientId={googleClientId}
+        authStatus={authStatus}
+        language={language}
+        onGoogleCredential={onGoogleCredential}
+        signOut={signOut}
+        t={t}
+      />
+      <button
+        className="primary-hero"
+        disabled={connection === "connecting"}
+        onClick={createRoom}
+      >
+        <Icon name="plus" />
+        <span>
+          <b>{t("room.create")}</b>
+          <small>{t("room.createHint")}</small>
+        </span>
+        <Icon name="forward" />
+      </button>
+      <div className="or-divider">
+        <span>{t("room.haveCode")}</span>
+      </div>
+      <div className="join-box">
+        <input
+          inputMode="numeric"
+          value={joinCode}
+          onChange={(e) =>
+            setJoinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+          }
+          placeholder="000 000"
+          aria-label={t("room.code")}
+        />
+        <button onClick={joinRoom}>{t("room.join")}</button>
+      </div>
+      {error && (
+        <p className="error-message">
+          <Icon name="warning" />
+          {error}
+        </p>
+      )}
+      <footer>{t("common.responsible")}</footer>
+    </section>
+  );
+}
+
+function AccountPanel({
+  account,
+  googleClientId,
+  authStatus,
+  language,
+  onGoogleCredential,
+  signOut,
+  t,
+}: {
+  account: AccountUser | null;
+  googleClientId: string;
+  authStatus: "idle" | "loading" | "error";
+  language: Language;
+  onGoogleCredential: (credential: string) => void;
+  signOut: () => void;
+  t: T;
+}) {
+  return (
+    <section className={`account-card ${account ? "signed-in" : ""}`}>
+      {account ? (
+        <>
+          <div className="account-user">
+            {account.pictureUrl ? (
+              <img
+                src={account.pictureUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <Icon name="players" />
+            )}
+            <div>
+              <b>{account.displayName}</b>
+              <span>{account.email}</span>
+              <small>
+                <Icon name="check" />
+                {t("account.saved")}
+              </small>
+            </div>
+          </div>
+          <button className="account-signout" onClick={signOut}>
+            {t("account.signOut")}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="account-copy">
+            <Icon name="players" />
+            <div>
+              <b>{t("account.title")}</b>
+              <span>{t("account.hint")}</span>
+            </div>
+          </div>
+          {googleClientId ? (
+            <GoogleSignIn
+              clientId={googleClientId}
+              language={language}
+              onCredential={onGoogleCredential}
+            />
+          ) : (
+            <small className="account-unavailable">
+              {t("account.unavailable")}
+            </small>
+          )}
+          {authStatus === "loading" && <small>{t("account.signingIn")}</small>}
+          {authStatus === "error" && (
+            <small className="account-error">{t("account.error")}</small>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function FeedbackForm({
+  submit,
+  t,
+}: {
+  submit: (message: string, rating: number | null) => Promise<void>;
+  t: T;
+}) {
+  const [message, setMessage] = useState(""),
+    [rating, setRating] = useState<number | null>(null),
+    [status, setStatus] = useState<
+      "idle" | "sending" | "sent" | "error" | "short"
+    >("idle");
+  const send = async () => {
+    if (message.trim().length < 8) {
+      setStatus("short");
+      return;
+    }
+    setStatus("sending");
+    try {
+      await submit(message.trim(), rating);
+      setMessage("");
+      setRating(null);
+      setStatus("sent");
+    } catch {
+      setStatus("error");
+    }
+  };
+  return (
+    <div className="feedback-form">
+      <p>{t("feedback.hint")}</p>
+      <div className="feedback-rating-group">
+        <span>{t("feedback.rating")}</span>
+        <div className="feedback-rating">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              className={rating === value ? "active" : ""}
+              onClick={() => setRating(value)}
+              aria-pressed={rating === value}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </div>
+      <textarea
+        value={message}
+        maxLength={2000}
+        onChange={(event) => {
+          setMessage(event.target.value);
+          if (status !== "idle") setStatus("idle");
+        }}
+        placeholder={t("feedback.placeholder")}
+      />
+      <button
+        className="primary-action"
+        disabled={status === "sending"}
+        onClick={send}
+      >
+        <Icon name="feedback" />
+        {t(status === "sending" ? "feedback.sending" : "feedback.send")}
+      </button>
+      {status === "sent" && (
+        <small className="feedback-success">
+          <Icon name="check" />
+          {t("feedback.sent")}
+        </small>
+      )}
+      {status === "error" && (
+        <small className="account-error">{t("feedback.error")}</small>
+      )}
+      {status === "short" && (
+        <small className="account-error">{t("feedback.short")}</small>
+      )}
+    </div>
+  );
+}
+function Brand() {
+  return (
+    <div className="brand">
+      <img
+        className="brand-logo"
+        src="/assets/shot-app-icon.png"
+        alt=""
+        aria-hidden="true"
+      />
+      <strong>
+        SHOT<span>!</span>
+      </strong>
+    </div>
+  );
+}
+
+function TopBar({
+  room,
+  current,
+  isMyTurn,
+  isHost,
+  onPlayers,
+  onSettings,
+  onRounds,
+  t,
+}: {
+  room: RoomState;
+  roomCode: string;
+  current?: Player;
+  isMyTurn: boolean;
+  isHost: boolean;
+  connection: string;
+  onPlayers: () => void;
+  onSettings: () => void;
+  onRounds: () => void;
+  t: T;
+}) {
+  return (
+    <header className="game-topbar">
+      <Brand />
+      {room.phase !== "lobby" && (
+        <button className="round-button" disabled={!isHost} onClick={onRounds}>
+          {room.totalCards === null
+            ? t("game.roundInfinite", { current: room.round })
+            : t("game.round", { current: room.round, total: room.totalCards })}
+        </button>
+      )}
+      <div className="topbar-actions">
+        {room.phase !== "lobby" && (
+          <button onClick={onPlayers} aria-label={t("players.title")}>
+            <Icon name="players" />
+          </button>
+        )}
+        <button onClick={onSettings} aria-label={t("settings.title")}>
+          <Icon name="settings" />
+        </button>
+      </div>
+      {room.phase !== "lobby" && (
+        <div className="current-turn">
+          <PlayerFace player={current} />
+          <span>
+            {isMyTurn
+              ? t("game.turnYou")
+              : t("game.turnPlayer", { name: current?.nickname ?? "—" })}
+          </span>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function Lobby({
+  room,
+  roomCode,
+  shareUrl,
+  isHost,
+  copied,
+  copyRoom,
+  startGame,
+  openSettings,
+  t,
+}: {
+  room: RoomState;
+  roomCode: string;
+  shareUrl: string;
+  isHost: boolean;
+  copied: boolean;
+  copyRoom: () => void;
+  startGame: () => void;
+  openSettings: () => void;
+  t: T;
+}) {
+  const active = room.players.filter((p) => !p.spectator);
+  return (
+    <section className="lobby-screen">
+      <div className="lobby-intro">
+        <small>{t("lobby.ready")}</small>
+        <h1>{t("lobby.title")}</h1>
+        <p>{t("lobby.subtitle")}</p>
+      </div>
+      <section className="code-card">
+        <div>
+          <span>{t("room.code")}</span>
+          <strong>
+            {roomCode.slice(0, 3)} {roomCode.slice(3)}
+          </strong>
+          <small>
+            <i /> {t("room.live")}
+          </small>
+        </div>
+        <QRCodeView value={shareUrl} />
+        <button onClick={copyRoom}>
+          <Icon name={copied ? "check" : "copy"} />
+          {copied ? t("room.copied") : t("room.copy")}
+        </button>
+      </section>
+      <section className="lobby-people">
+        <header>
+          <span>{t("lobby.players")}</span>
+          <b>{room.players.length}</b>
+        </header>
+        <div>
+          {room.players.slice(0, 8).map((p, i) => (
+            <span key={p.id} title={p.nickname}>
+              <PlayerFace player={p} index={i} />
+              {p.id === room.hostId && <Icon name="crown" />}
+            </span>
+          ))}
+        </div>
+      </section>
+      <button className="lobby-summary" onClick={openSettings}>
+        <span>
+          <Icon name="settings" />
+          <b>{t("lobby.summary")}</b>
+          <small>
+            {room.totalCards === null ? "∞" : room.totalCards} ·{" "}
+            {room.activeCategories
+              .map((k) => t(categoryMeta[k].labelKey as TranslationKey))
+              .join(" · ")}
+          </small>
+        </span>
+        <Icon name="play" />
+      </button>
+      {isHost ? (
+        <button
+          className="primary-hero lobby-start"
+          disabled={active.length < 2}
+          onClick={startGame}
+        >
+          <Icon name="play" />
+          <span>
+            <b>{t("lobby.start")}</b>
+            <small>
+              {active.length < 2
+                ? t("lobby.needPlayers")
+                : t("lobby.activeReady", { count: active.length })}
+            </small>
+          </span>
+          <Icon name="play" />
+        </button>
+      ) : (
+        <LiveWait text={t("lobby.waitHost")} />
+      )}
+    </section>
+  );
+}
+function QRCodeView({ value }: { value: string }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(value, {
+      width: 120,
+      margin: 1,
+      color: { dark: "#151019", light: "#f8f5fb" },
+    }).then((url) => {
+      if (active) setSrc(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [value]);
+  return src ? (
+    <img className="room-qr" src={src} alt="QR" />
+  ) : (
+    <span className="qr-placeholder" />
+  );
+}
+
+function Game({
+  room,
+  playerId,
+  current,
+  card,
+  language,
+  isHost,
+  isMyTurn,
+  me,
+  voteDraft,
+  maxSelections,
+  allVotes,
+  everyoneAnswered,
+  responseCount,
+  connectedCount,
+  send,
+  toggleVote,
+  next,
+  t,
+}: {
+  room: RoomState;
+  playerId: string;
+  current?: Player;
+  card: Card | null;
+  language: Language;
+  isHost: boolean;
+  isMyTurn: boolean;
+  me?: Player;
+  voteDraft: string[];
+  maxSelections: number;
+  allVotes: boolean;
+  everyoneAnswered: boolean;
+  responseCount: number;
+  connectedCount: number;
+  send: (m: object) => void;
+  toggleVote: (id: string) => void;
+  next: () => void;
+  t: T;
+}) {
+  const [opening, setOpening] = useState(false);
+  useEffect(() => {
+    if (room.card) setOpening(false);
+  }, [room.card, room.round]);
+  const reveal = () => {
+    if (opening) return;
+    setOpening(true);
+    setTimeout(() => send({ type: "revealCard" }), 320);
+  };
+  if (!room.card)
+    return (
+      <section className="game-screen closed-state">
+        <div
+          className={`card-back ${isMyTurn ? "active" : ""} ${opening ? "opening" : ""}`}
+        >
+          <img
+            className="card-logo"
+            src="/assets/shot-app-icon.png"
+            alt="SHOT!"
+          />
+          <span>SHOT!</span>
+        </div>
+        {isMyTurn ? (
+          <button
+            className="primary-action"
+            disabled={opening}
+            onClick={reveal}
+          >
+            {t("game.open")}
+            <Icon name="play" />
+          </button>
+        ) : (
+          <LiveWait
+            text={t("game.waitOpen", { name: current?.nickname ?? "—" })}
+          />
+        )}
+      </section>
+    );
+  if (!card)
+    return (
+      <section className="game-screen">
+        <p>{t("game.noCard")}</p>
+      </section>
+    );
+  const localAnswer =
+      playerId in room.responses ? room.responses[playerId] : null,
+    opponent = room.players.find((p) => p.id === room.duelOpponentId),
+    needsDuel = card.kind === "duel" && !opponent;
+  return (
+    <>
+      <section className="game-screen">
+        <article
+          key={`${room.round}-${card.id}`}
+          className={`content-card kind-${card.kind} card-opening`}
+        >
+          <header>
+            <span>
+              <Icon name={categoryMeta[card.kind].icon} />
+              {t(categoryMeta[card.kind].labelKey as TranslationKey)}
+            </span>
+          </header>
+          <h1>{getCardText(card, language)}</h1>
+          {opponent && (
+            <div className="duel-pair">
+              <PlayerFace player={current} />
+              <Icon name="duel" />
+              <PlayerFace player={opponent} />
+              <span>
+                {current?.nickname} · {opponent.nickname}
+              </span>
+            </div>
+          )}
+        </article>
+        {!room.confirmed && isMyTurn && (
+          <button
+            className="pass-link"
+            disabled={(room.passes[playerId] ?? 0) < 1}
+            onClick={() => send({ type: "skip" })}
+          >
+            <Icon name="pass" />
+            {t("game.pass")} ·{" "}
+            {t("game.passLeft", { count: room.passes[playerId] ?? 0 })}
+          </button>
+        )}
+        {needsDuel ? (
+          <section className="action-panel">
+            <h2>{t("mini.chooseOpponent")}</h2>
+            {isMyTurn ? (
+              <div className="player-choice-grid">
+                {room.players
+                  .filter(
+                    (p) => p.connected && !p.spectator && p.id !== playerId,
+                  )
+                  .map((p, i) => (
+                    <button
+                      key={p.id}
+                      onClick={() =>
+                        send({ type: "selectDuelOpponent", opponentId: p.id })
+                      }
+                    >
+                      <PlayerFace player={p} index={i} />
+                      <span>{p.nickname}</span>
+                    </button>
+                  ))}
+              </div>
+            ) : (
+              <LiveWait
+                text={t("mini.opponentWaiting", {
+                  name: current?.nickname ?? "—",
+                })}
+              />
+            )}
+          </section>
+        ) : room.miniGame ? (
+          <MiniGame
+            key={`${room.round}-${room.miniGame.startedAt ?? "ready"}`}
+            mini={room.miniGame}
+            me={playerId}
+            players={room.players}
+            isHost={isHost}
+            send={send}
+            language={language}
+            t={t}
+          />
+        ) : card.kind === "vote" ? (
+          <VotePanel
+            room={room}
+            playerId={playerId}
+            draft={voteDraft}
+            max={maxSelections}
+            allVotes={allVotes}
+            toggle={toggleVote}
+            send={send}
+            t={t}
+          />
+        ) : (
+          <section className="action-panel">
+            <header>
+              <div>
+                <small>{t("game.answer")}</small>
+                <b>
+                  {t("game.responses", {
+                    done: responseCount,
+                    total: connectedCount,
+                  })}
+                </b>
+              </div>
+            </header>
+            {!me?.spectator ? (
+              <div className="answer-grid">
+                <button
+                  className={localAnswer === true ? "selected drink" : ""}
+                  onClick={() => send({ type: "answer", drank: true })}
+                >
+                  <Icon name="shot" />
+                  <b>{t("game.drank")}</b>
+                </button>
+                <button
+                  className={localAnswer === false ? "selected safe" : ""}
+                  onClick={() => send({ type: "answer", drank: false })}
+                >
+                  <Icon name="check" />
+                  <b>{t("game.notDrank")}</b>
+                </button>
+              </div>
+            ) : (
+              <div className="spectator-note">
+                <Icon name="eye" />
+                <span>{t("players.spectator")}</span>
+              </div>
+            )}
+            <LiveWait
+              text={
+                everyoneAnswered
+                  ? t("game.everyoneAnswered")
+                  : t("game.waitAnswers")
+              }
+            />
+          </section>
+        )}
+      </section>
+      {isHost && (
+        <div className="host-main-action">
+          {room.confirmed ? (
+            <button onClick={next}>
+              {room.totalCards !== null && room.round >= room.totalCards
+                ? t("game.finish")
+                : t("game.next")}
+              <Icon name="play" />
+            </button>
+          ) : !room.miniGame && card.kind !== "vote" ? (
+            <button
+              disabled={!everyoneAnswered}
+              onClick={() => send({ type: "confirm" })}
+            >
+              {t("game.confirm")}
+              <Icon name="check" />
+            </button>
+          ) : card.kind === "vote" && !room.confirmed ? (
+            <button
+              disabled={!allVotes}
+              onClick={() => send({ type: "revealVotes" })}
+            >
+              {t("vote.result")}
+              <Icon name="check" />
+            </button>
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+}
+
+function VotePanel({
+  room,
+  playerId,
+  draft,
+  max,
+  allVotes,
+  toggle,
+  send,
+  t,
+}: {
+  room: RoomState;
+  playerId: string;
+  draft: string[];
+  max: number;
+  allVotes: boolean;
+  toggle: (id: string) => void;
+  send: (m: object) => void;
+  t: T;
+}) {
+  const locked = room.myVote.length > 0;
+  return (
+    <section className="action-panel vote-panel">
+      <header>
+        <div>
+          <small>{t("vote.title")}</small>
+          <h2>
+            {room.voteRound > 0
+              ? t("vote.revote")
+              : t("vote.choose", { count: max })}
+          </h2>
+        </div>
+        <b>
+          {room.votedPlayerIds.length}/
+          {room.players.filter((p) => p.connected && !p.spectator).length}
+        </b>
+      </header>
+      {room.voteRevealed ? (
+        <div className="vote-result-list">
+          {room.players
+            .filter(
+              (p) =>
+                room.settings.voteResultMode === "all" ||
+                room.voteWinners.includes(p.id),
+            )
+            .sort(
+              (a, b) =>
+                (room.voteTally[b.id] ?? 0) - (room.voteTally[a.id] ?? 0),
+            )
+            .map((p, i) => (
+              <div
+                key={p.id}
+                className={room.voteWinners.includes(p.id) ? "winner" : ""}
+              >
+                <PlayerFace player={p} index={i} />
+                <span>{p.nickname}</span>
+                {room.settings.showVoteDistribution && (
+                  <b>{t("vote.votes", { count: room.voteTally[p.id] ?? 0 })}</b>
+                )}
+              </div>
+            ))}
+        </div>
+      ) : (
+        <>
+          <p>
+            {room.settings.votePrivacy === "open"
+              ? t("vote.openBallot")
+              : t("vote.secretBallot")}
+          </p>
+          <div className="player-choice-grid">
+            {room.players
+              .filter(
+                (p) =>
+                  p.connected &&
+                  !p.spectator &&
+                  (room.settings.allowSelfVote || p.id !== playerId),
+              )
+              .map((p, i) => {
+                const selected = (locked ? room.myVote : draft).includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    className={selected ? "selected" : ""}
+                    disabled={locked}
+                    onClick={() => toggle(p.id)}
+                  >
+                    <PlayerFace player={p} index={i} />
+                    <span>{p.nickname}</span>
+                    {selected && <Icon name="check" />}
+                  </button>
+                );
+              })}
+          </div>
+          <button
+            className="primary-action"
+            disabled={locked || draft.length !== max}
+            onClick={() => send({ type: "vote", selections: draft })}
+          >
+            {locked ? t("vote.saved") : t("vote.send")}
+          </button>
+          <LiveWait
+            text={allVotes ? t("game.everyoneAnswered") : t("vote.wait")}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+function PlayersDrawer({
+  room,
+  playerId,
+  isHost,
+  close,
+  send,
+  critical,
+  t,
+}: {
+  room: RoomState;
+  playerId: string;
+  isHost: boolean;
+  close: () => void;
+  send: (m: object) => void;
+  critical: (l: string, r: () => void) => void;
+  t: T;
+}) {
+  const move = (id: string, direction: -1 | 1) => {
+    const ids = room.players.map((p) => p.id),
+      index = ids.indexOf(id),
+      target = index + direction;
+    if (index < 0 || target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    send({ type: "reorder", playerIds: ids });
+  };
+  return (
+    <div className="drawer-overlay" onClick={close}>
+      <aside className="players-drawer" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <div>
+            <small>{t("common.live")}</small>
+            <h2>{t("players.title")}</h2>
+          </div>
+          <button onClick={close}>
+            <Icon name="close" />
+          </button>
+        </header>
+        <div className="drawer-list">
+          {room.players.map((p, index) => (
+            <article
+              key={p.id}
+              className={`${p.id === playerId ? "you" : ""} ${p.spectator ? "spectator" : ""}`}
+            >
+              <b className="position">{p.spectator ? "—" : index + 1}</b>
+              <PlayerFace player={p} index={index} />
+              <div>
+                <strong>{p.nickname}</strong>
+                <small>
+                  {p.id === room.hostId
+                    ? t("players.host")
+                    : p.spectator
+                      ? t("players.spectator")
+                      : p.connected
+                        ? t("players.online")
+                        : t("players.reconnecting")}
+                </small>
+              </div>
+              <span className="shot-total">
+                {p.shots}
+                <small>{t("players.shot")}</small>
+              </span>
+              {isHost && p.id !== playerId && (
+                <details>
+                  <summary>
+                    <Icon name="more" />
+                  </summary>
+                  <div>
+                    <button
+                      disabled={index === 0}
+                      onClick={() => move(p.id, -1)}
+                    >
+                      <Icon name="back" />
+                      {t("players.moveUp")}
+                    </button>
+                    <button
+                      disabled={index === room.players.length - 1}
+                      onClick={() => move(p.id, 1)}
+                    >
+                      <Icon name="play" />
+                      {t("players.moveDown")}
+                    </button>
+                    <button
+                      onClick={() =>
+                        send({
+                          type: "spectator",
+                          playerId: p.id,
+                          spectator: !p.spectator,
+                        })
+                      }
+                    >
+                      <Icon name="eye" />
+                      {p.spectator
+                        ? t("settings.activate")
+                        : t("settings.spectate")}
+                    </button>
+                    <button
+                      onClick={() =>
+                        critical(t("settings.transfer"), () =>
+                          send({ type: "transfer", playerId: p.id }),
+                        )
+                      }
+                    >
+                      <Icon name="crown" />
+                      {t("settings.transfer")}
+                    </button>
+                    <button
+                      className="danger"
+                      onClick={() =>
+                        critical(t("settings.kick"), () =>
+                          send({ type: "kick", playerId: p.id }),
+                        )
+                      }
+                    >
+                      <Icon name="leave" />
+                      {t("settings.kick")}
+                    </button>
+                  </div>
+                </details>
+              )}
+            </article>
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+const settingSections: Array<{
+  id: string;
+  key: TranslationKey;
+  icon: IconName;
+}> = [
+  { id: "account", key: "account.title", icon: "players" },
+  { id: "future", key: "settings.future", icon: "spark" },
+  { id: "categories", key: "settings.categories", icon: "condition" },
+  { id: "length", key: "settings.length", icon: "five_seconds" },
+  { id: "content", key: "settings.content", icon: "warning" },
+  { id: "digital", key: "settings.digital", icon: "digital" },
+  { id: "duels", key: "settings.duels", icon: "duel" },
+  { id: "voting", key: "settings.voting", icon: "vote" },
+  { id: "management", key: "settings.management", icon: "settings" },
+  { id: "audio", key: "settings.audio", icon: "volume" },
+  { id: "language", key: "profile.language", icon: "language" },
+  { id: "leave", key: "settings.leave", icon: "leave" },
+  { id: "feedback", key: "feedback.title", icon: "feedback" },
+];
+function SettingsSheet({
+  room,
+  language,
+  isHost,
+  section,
+  setSection,
+  close,
+  send,
+  soundOn,
+  setSoundOn,
+  vibrationOn,
+  setVibrationOn,
+  reduceMotion,
+  setReduceMotion,
+  setLanguage,
+  leave,
+  critical,
+  account,
+  googleClientId,
+  authStatus,
+  onGoogleCredential,
+  signOut,
+  submitFeedback,
+  t,
+}: {
+  room: RoomState;
+  language: Language;
+  isHost: boolean;
+  section: string | null;
+  setSection: (v: string | null) => void;
+  close: () => void;
+  send: (m: object) => void;
+  soundOn: boolean;
+  setSoundOn: (v: boolean) => void;
+  vibrationOn: boolean;
+  setVibrationOn: (v: boolean) => void;
+  reduceMotion: boolean;
+  setReduceMotion: (v: boolean) => void;
+  setLanguage: (v: Language) => void;
+  leave: () => void;
+  critical: (l: string, r: () => void) => void;
+  account: AccountUser | null;
+  googleClientId: string;
+  authStatus: "idle" | "loading" | "error";
+  onGoogleCredential: (credential: string) => void;
+  signOut: () => void;
+  submitFeedback: (message: string, rating: number | null) => Promise<void>;
+  t: T;
+}) {
+  const cfg = (value: object) => send({ type: "configure", ...value });
+  const toggleCategory = (kind: CardKind) => {
+    const active = room.activeCategories.includes(kind),
+      next = active
+        ? room.activeCategories.filter((k) => k !== kind)
+        : [...room.activeCategories, kind];
+    if (next.length) cfg({ categories: next });
+  };
+  const setWeight = (kind: CardKind, value: number) => {
+    if (!room.activeCategories.includes(kind)) return;
+    const weights = { ...room.settings.categoryWeights },
+      others = room.activeCategories.filter((k) => k !== kind),
+      rest = 100 - value,
+      current = others.reduce((sum, k) => sum + weights[k], 0);
+    weights[kind] = value;
+    let remaining = rest;
+    others.forEach((key, index) => {
+      weights[key] =
+        index === others.length - 1
+          ? remaining
+          : Math.max(
+              0,
+              Math.round(
+                (current ? weights[key] / current : 1 / others.length) * rest,
+              ),
+            );
+      remaining -= weights[key];
+    });
+    cfg({ categoryWeights: weights });
+  };
+  const localSection = section === "leave" ? null : section,
+    visibleSections = isHost
+      ? settingSections
+      : settingSections.filter((item) =>
+          ["account", "audio", "language", "leave", "feedback"].includes(
+            item.id,
+          ),
+        ),
+    showsApplyNote = Boolean(
+      localSection &&
+      [
+        "future",
+        "categories",
+        "length",
+        "content",
+        "digital",
+        "duels",
+        "voting",
+        "management",
+      ].includes(localSection),
+    );
+  return (
+    <div className="sheet-overlay" onClick={close}>
+      <section className="settings-sheet" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <button
+            className="back-button"
+            onClick={() => (localSection ? setSection(null) : close())}
+          >
+            <Icon name={localSection ? "back" : "close"} />
+          </button>
+          <div>
+            <small>SHOT!</small>
+            <h2>
+              {localSection
+                ? t(settingSections.find((x) => x.id === localSection)!.key)
+                : t("settings.title")}
+            </h2>
+          </div>
+        </header>
+        {!localSection ? (
+          <nav className="settings-menu">
+            {visibleSections.map((item) => (
+              <button
+                key={item.id}
+                className={item.id === "leave" ? "danger" : ""}
+                onClick={() =>
+                  item.id === "leave"
+                    ? critical(t("settings.leave"), leave)
+                    : setSection(item.id)
+                }
+              >
+                <Icon name={item.icon} />
+                <span>{t(item.key)}</span>
+                {item.id === "language" ? (
+                  <b>{language === "tr" ? "TR" : "EN"}</b>
+                ) : (
+                  <Icon name="play" />
+                )}
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <div className="settings-content">
+            {showsApplyNote && (
+              <p className="apply-note">{t("settings.applyNext")}</p>
+            )}
+            {localSection === "account" && (
+              <AccountPanel
+                account={account}
+                googleClientId={googleClientId}
+                authStatus={authStatus}
+                language={language}
+                onGoogleCredential={onGoogleCredential}
+                signOut={signOut}
+                t={t}
+              />
+            )}
+            {localSection === "future" && (
+              <>
+                <SettingToggle
+                  label={t("settings.hostConfirm")}
+                  value={room.settings.requireHostConfirm}
+                  onChange={() =>
+                    cfg({
+                      requireHostConfirm: !room.settings.requireHostConfirm,
+                    })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.autoSave")}
+                  value={room.settings.autoConfirm}
+                  onChange={() =>
+                    cfg({ autoConfirm: !room.settings.autoConfirm })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.autoAdvance")}
+                  value={room.settings.autoAdvance}
+                  onChange={() =>
+                    cfg({ autoAdvance: !room.settings.autoAdvance })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.noRepeat")}
+                  value={room.settings.preventMiniRepeat}
+                  onChange={() =>
+                    cfg({ preventMiniRepeat: !room.settings.preventMiniRepeat })
+                  }
+                />
+              </>
+            )}
+            {localSection === "categories" && (
+              <>
+                <div className="category-settings">
+                  {(Object.keys(categoryMeta) as CardKind[]).map((kind) => (
+                    <article
+                      key={kind}
+                      className={
+                        room.activeCategories.includes(kind) ? "active" : ""
+                      }
+                    >
+                      <button
+                        disabled={!isHost}
+                        onClick={() => toggleCategory(kind)}
+                      >
+                        <Icon name={categoryMeta[kind].icon} />
+                        <span>
+                          {t(categoryMeta[kind].labelKey as TranslationKey)}
+                        </span>
+                        <Icon
+                          name={
+                            room.activeCategories.includes(kind)
+                              ? "check"
+                              : "plus"
+                          }
+                        />
+                      </button>
+                      {room.activeCategories.includes(kind) && (
+                        <label>
+                          <span>
+                            {t("category.weight", {
+                              value: room.settings.categoryWeights[kind],
+                            })}
+                          </span>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={room.settings.categoryWeights[kind]}
+                            disabled={
+                              !isHost || room.activeCategories.length === 1
+                            }
+                            onChange={(e) =>
+                              setWeight(kind, Number(e.target.value))
+                            }
+                          />
+                        </label>
+                      )}
+                    </article>
+                  ))}
+                </div>
+                <strong className="weight-total">
+                  {t("category.total", {
+                    value: room.activeCategories.reduce(
+                      (sum, k) => sum + room.settings.categoryWeights[k],
+                      0,
+                    ),
+                  })}
+                </strong>
+              </>
+            )}
+            {localSection === "length" && (
+              <>
+                <SettingRow label={t("settings.rounds")}>
+                  <div className="number-stepper">
+                    <button
+                      onClick={() =>
+                        cfg({
+                          totalCards: Math.max(
+                            room.round,
+                            (room.totalCards ?? room.round) - 5,
+                          ),
+                        })
+                      }
+                    >
+                      −
+                    </button>
+                    <b>{room.totalCards ?? "∞"}</b>
+                    <button
+                      onClick={() =>
+                        cfg({ totalCards: (room.totalCards ?? room.round) + 5 })
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </SettingRow>
+                <SettingToggle
+                  label={t("settings.infinite")}
+                  value={room.totalCards === null}
+                  onChange={() =>
+                    cfg({
+                      totalCards:
+                        room.totalCards === null
+                          ? Math.max(30, room.round)
+                          : null,
+                    })
+                  }
+                />
+                {room.phase !== "lobby" && (
+                  <button
+                    className="secondary-action"
+                    onClick={() => cfg({ totalCards: room.round })}
+                  >
+                    {t("settings.endAt")}
+                  </button>
+                )}
+                <SettingRow label={t("settings.passes")}>
+                  <Segmented
+                    value={room.passLimit}
+                    items={[
+                      { value: 1, label: "1" },
+                      { value: 2, label: "2" },
+                    ]}
+                    onChange={(value) => cfg({ passLimit: value })}
+                  />
+                </SettingRow>
+              </>
+            )}
+            {localSection === "content" && (
+              <Segmented
+                value={room.settings.contentLevel}
+                items={(["light", "normal", "hard"] as ContentLevel[]).map(
+                  (value) => ({
+                    value,
+                    label: t(`content.${value}` as TranslationKey),
+                  }),
+                )}
+                onChange={(value) => cfg({ contentLevel: value })}
+              />
+            )}{" "}
+            {localSection === "digital" && (
+              <>
+                <SettingToggle
+                  label={t("settings.digitalAll")}
+                  value={room.activeCategories.includes("digital")}
+                  onChange={() => toggleCategory("digital")}
+                />
+                <SettingToggle
+                  label={t("settings.twoPlayer")}
+                  value={room.settings.digitalTwoPlayer}
+                  onChange={() =>
+                    cfg({ digitalTwoPlayer: !room.settings.digitalTwoPlayer })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.groupGames")}
+                  value={room.settings.digitalGroup}
+                  onChange={() =>
+                    cfg({ digitalGroup: !room.settings.digitalGroup })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.noRepeat")}
+                  value={room.settings.preventMiniRepeat}
+                  onChange={() =>
+                    cfg({ preventMiniRepeat: !room.settings.preventMiniRepeat })
+                  }
+                />
+                <div className="mini-toggle-grid">
+                  {miniGameKinds.map((game) => {
+                    const active = room.settings.activeMiniGames.includes(game);
+                    return (
+                      <button
+                        key={game}
+                        className={active ? "active" : ""}
+                        onClick={() =>
+                          cfg({
+                            activeMiniGames: active
+                              ? room.settings.activeMiniGames.filter(
+                                  (x) => x !== game,
+                                )
+                              : [...room.settings.activeMiniGames, game],
+                          })
+                        }
+                      >
+                        <Icon name={game} />
+                        <span>{t(`miniName.${game}` as TranslationKey)}</span>
+                        <Icon name={active ? "check" : "plus"} />
+                      </button>
+                    );
+                  })}
+                </div>
+                {room.miniGame && !room.confirmed && (
+                  <div className="management-grid">
+                    <button onClick={() => send({ type: "restartMini" })}>
+                      <Icon name="redo" />
+                      {t("mini.restart")}
+                    </button>
+                    <button
+                      onClick={() =>
+                        critical(t("mini.cancel"), () =>
+                          send({ type: "cancelMini" }),
+                        )
+                      }
+                    >
+                      <Icon name="close" />
+                      {t("mini.cancel")}
+                    </button>
+                    {room.miniGame.participantIds
+                      .filter((id) => id !== room.hostId)
+                      .map((id) => (
+                        <button
+                          key={id}
+                          onClick={() =>
+                            send({ type: "excludeMiniPlayer", playerId: id })
+                          }
+                        >
+                          <Icon name="eye" />
+                          {t("mini.remove")} ·{" "}
+                          {room.players.find((p) => p.id === id)?.nickname}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </>
+            )}
+            {localSection === "duels" && (
+              <>
+                <SettingRow label={t("settings.duelOpponent")}>
+                  <Segmented
+                    value={room.settings.duelOpponentMode}
+                    items={[
+                      { value: "opener", label: t("settings.openerChooses") },
+                      { value: "system", label: t("settings.systemChooses") },
+                    ]}
+                    onChange={(value) => cfg({ duelOpponentMode: value })}
+                  />
+                </SettingRow>
+                <SettingToggle
+                  label={t("settings.noConsecutiveOpponent")}
+                  value={room.settings.preventOpponentRepeat}
+                  onChange={() =>
+                    cfg({
+                      preventOpponentRepeat:
+                        !room.settings.preventOpponentRepeat,
+                    })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.phoneCards")}
+                  value={room.settings.allowPhoneCards}
+                  onChange={() =>
+                    cfg({ allowPhoneCards: !room.settings.allowPhoneCards })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.trivia")}
+                  value={room.settings.allowTrivia}
+                  onChange={() =>
+                    cfg({ allowTrivia: !room.settings.allowTrivia })
+                  }
+                />
+                <SettingToggle
+                  label={t("settings.groupVoteDuels")}
+                  value={room.settings.allowGroupVoteDuels}
+                  onChange={() =>
+                    cfg({
+                      allowGroupVoteDuels: !room.settings.allowGroupVoteDuels,
+                    })
+                  }
+                />
+              </>
+            )}
+            {localSection === "voting" && (
+              <>
+                <SettingRow label={t("settings.votePrivacy")}>
+                  <Segmented
+                    value={room.settings.votePrivacy}
+                    items={[
+                      { value: "secret", label: t("settings.secret") },
+                      { value: "open", label: t("settings.open") },
+                    ]}
+                    onChange={(value) => cfg({ votePrivacy: value })}
+                  />
+                </SettingRow>
+                <SettingToggle
+                  label={t("settings.distribution")}
+                  value={room.settings.showVoteDistribution}
+                  onChange={() =>
+                    cfg({
+                      showVoteDistribution: !room.settings.showVoteDistribution,
+                    })
+                  }
+                />
+                <SettingRow label={t("settings.allResults")}>
+                  <Segmented
+                    value={room.settings.voteResultMode}
+                    items={[
+                      { value: "all", label: t("settings.allResults") },
+                      { value: "winner", label: t("settings.winnerOnly") },
+                    ]}
+                    onChange={(value) => cfg({ voteResultMode: value })}
+                  />
+                </SettingRow>
+                <SettingToggle
+                  label={t("settings.selfVote")}
+                  value={room.settings.allowSelfVote}
+                  onChange={() =>
+                    cfg({ allowSelfVote: !room.settings.allowSelfVote })
+                  }
+                />
+                <SettingRow label={t("settings.tie")}>
+                  <Segmented
+                    value={room.settings.voteTie}
+                    items={[
+                      { value: "drink", label: t("settings.tieDrink") },
+                      { value: "revote", label: t("settings.tieRevote") },
+                    ]}
+                    onChange={(value) => cfg({ voteTie: value })}
+                  />
+                </SettingRow>
+              </>
+            )}
+            {localSection === "management" && (
+              <>
+                <div className="management-grid">
+                  <button onClick={() => send({ type: "pause" })}>
+                    <Icon name={room.phase === "paused" ? "play" : "pause"} />
+                    {room.phase === "paused"
+                      ? t("game.resume")
+                      : t("settings.pause")}
+                  </button>
+                  <button
+                    disabled={!room.confirmed}
+                    onClick={() =>
+                      critical(t("settings.undo"), () =>
+                        send({ type: "undoResult" }),
+                      )
+                    }
+                  >
+                    <Icon name="back" />
+                    {t("settings.undo")}
+                  </button>
+                  <button
+                    disabled={!room.card}
+                    onClick={() =>
+                      critical(t("settings.replay"), () =>
+                        send({ type: "replayCard" }),
+                      )
+                    }
+                  >
+                    <Icon name="redo" />
+                    {t("settings.replay")}
+                  </button>
+                  <button
+                    disabled={!room.card || room.confirmed}
+                    onClick={() => send({ type: "redrawCard" })}
+                  >
+                    <Icon name="spark" />
+                    {t("settings.redraw")}
+                  </button>
+                  <button
+                    onClick={() =>
+                      critical(t("settings.skipTurn"), () =>
+                        send({ type: "skipTurn" }),
+                      )
+                    }
+                  >
+                    <Icon name="pass" />
+                    {t("settings.skipTurn")}
+                  </button>
+                  <button
+                    className="danger"
+                    onClick={() =>
+                      critical(t("settings.end"), () =>
+                        send({ type: "endGame" }),
+                      )
+                    }
+                  >
+                    <Icon name="leave" />
+                    {t("settings.end")}
+                  </button>
+                </div>
+                <h3>{t("settings.shots")}</h3>
+                {room.players.map((p) => (
+                  <SettingRow key={p.id} label={p.nickname}>
+                    <div className="number-stepper">
+                      <button
+                        onClick={() =>
+                          send({
+                            type: "shots",
+                            shots: { [p.id]: Math.max(0, p.shots - 1) },
+                          })
+                        }
+                      >
+                        −
+                      </button>
+                      <b>{p.shots}</b>
+                      <button
+                        onClick={() =>
+                          send({
+                            type: "shots",
+                            shots: { [p.id]: p.shots + 1 },
+                          })
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  </SettingRow>
+                ))}
+                {room.confirmed && room.turnResult && (
+                  <>
+                    <h3>{t("mini.losers")}</h3>
+                    {room.players
+                      .filter((p) => !p.spectator)
+                      .map((p) => (
+                        <SettingToggle
+                          key={p.id}
+                          label={p.nickname}
+                          value={room.turnResult!.drinkers.includes(p.id)}
+                          onChange={() =>
+                            send({
+                              type: "adjustResult",
+                              playerId: p.id,
+                              drinks: !room.turnResult!.drinkers.includes(p.id),
+                            })
+                          }
+                        />
+                      ))}
+                  </>
+                )}
+              </>
+            )}
+            {localSection === "audio" && (
+              <>
+                <SettingToggle
+                  label={t("settings.sound")}
+                  value={soundOn}
+                  onChange={() => setSoundOn(!soundOn)}
+                />
+                <SettingToggle
+                  label={t("settings.vibration")}
+                  value={vibrationOn}
+                  onChange={() => setVibrationOn(!vibrationOn)}
+                />
+                <SettingToggle
+                  label={t("settings.reduceMotion")}
+                  value={reduceMotion}
+                  onChange={() => setReduceMotion(!reduceMotion)}
+                />
+              </>
+            )}
+            {localSection === "language" && (
+              <Segmented
+                value={language}
+                items={[
+                  { value: "tr", label: t("language.tr") },
+                  { value: "en", label: t("language.en") },
+                ]}
+                onChange={setLanguage}
+              />
+            )}
+            {localSection === "feedback" && (
+              <FeedbackForm submit={submitFeedback} t={t} />
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+function SettingToggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <div className="setting-row">
+      <span>{label}</span>
+      <Toggle value={value} onChange={onChange} label={label} />
+    </div>
+  );
+}
+function SettingRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="setting-row">
+      <span>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function ShotResult({
+  room,
+  players,
+  isHost,
+  next,
+  close,
+  t,
+}: {
+  room: RoomState;
+  players: Player[];
+  isHost: boolean;
+  next: () => void;
+  close: () => void;
+  t: T;
+}) {
+  const drinkers = room.turnResult?.drinkers ?? [],
+    visible = drinkers.slice(0, 4),
+    name = (id: string) => players.find((p) => p.id === id)?.nickname ?? "—";
+  return (
+    <div className="result-overlay" onClick={close}>
+      <section
+        className={`shot-result ${drinkers.length ? "has-shots" : "safe"}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {drinkers.length ? (
+          <>
+            <Icon name="shot" />
+            <small>
+              {drinkers.length === 1
+                ? t("result.single", { name: name(drinkers[0]) })
+                : t("result.taking")}
+            </small>
+            <div className="result-avatars">
+              {visible.map((id, index) => {
+                const p = players.find((x) => x.id === id);
+                return (
+                  <div key={id}>
+                    <PlayerFace player={p} index={index} />
+                    <b>{p?.nickname}</b>
+                    <strong>
+                      <span>
+                        {room.resultPreviousShots[id] ??
+                          Math.max(0, (p?.shots ?? 1) - 1)}
+                      </span>{" "}
+                      → {p?.shots}
+                    </strong>
+                  </div>
+                );
+              })}
+              {drinkers.length > 4 && (
+                <em>{t("result.more", { count: drinkers.length - 4 })}</em>
+              )}
+            </div>
+            <h2>+1 SHOT</h2>
+            {room.turnResult?.reason === "mini:trust" && room.miniGame && (
+              <div className="trust-summary">
+                {room.miniGame.participantIds.map((id) => (
+                  <span key={id}>
+                    {t("result.choice", {
+                      name: name(id),
+                      choice:
+                        String(
+                          (
+                            (room.miniGame!.details.choices ?? {}) as Record<
+                              string,
+                              string
+                            >
+                          )[id],
+                        ) === "trust"
+                          ? t("mini.trust")
+                          : t("mini.betray"),
+                    })}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <Icon name="check" />
+            <h2>{t("result.safe")}</h2>
+            <p>{t("result.everyoneSafe")}</p>
+          </>
+        )}
+        <div className="result-actions">
+          <button onClick={close}>{t("result.skip")}</button>
+          {isHost && !room.settings.autoAdvance && (
+            <button className="primary" onClick={next}>
+              {t("result.continue")}
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+function Finish({
+  room,
+  leave,
+  t,
+}: {
+  room: RoomState;
+  leave: () => void;
+  t: T;
+}) {
+  return (
+    <section className="finish-screen">
+      <Icon name="check" />
+      <h1>{t("game.finished")}</h1>
+      <div>
+        {[...room.players]
+          .sort((a, b) => b.shots - a.shots)
+          .map((p, index) => (
+            <article key={p.id}>
+              <b>{index + 1}</b>
+              <PlayerFace player={p} index={index} />
+              <span>{p.nickname}</span>
+              <strong>
+                {p.shots} {t("players.shot")}
+              </strong>
+            </article>
+          ))}
+      </div>
+      <button className="primary-action" onClick={leave}>
+        {t("game.home")}
+      </button>
+    </section>
+  );
+}
+function ConfirmDialog({
+  action,
+  close,
+  t,
+}: {
+  action: { label: string; run: () => void };
+  close: () => void;
+  t: T;
+}) {
+  return (
+    <div className="confirm-overlay">
+      <section>
+        <Icon name="warning" />
+        <h2>{t("settings.confirmTitle")}</h2>
+        <p>{action.label}</p>
+        <small>{t("settings.confirmText")}</small>
+        <div>
+          <button onClick={close}>{t("settings.cancel")}</button>
+          <button
+            className="danger"
+            onClick={() => {
+              action.run();
+              close();
+            }}
+          >
+            {t("settings.accept")}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

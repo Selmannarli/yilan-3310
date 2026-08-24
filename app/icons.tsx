@@ -6,7 +6,7 @@ export type IconName =
   | "logo" | "settings" | "players" | "close" | "back" | "forward" | "up" | "down"
   | "check" | "copy" | "plus" | "minus" | "play" | "pause" | "more" | "pass" | "redo"
   | "shuffle" | "share" | "edit" | "leave" | "kick" | "home" | "transfer" | "reorder"
-  | "volume" | "soundOff" | "vibration" | "vibrationOff" | "language" | "warning" | "info"
+  | "volume" | "soundOff" | "vibration" | "vibrationOff" | "language" | "warning" | "info" | "feedback"
   | "eye" | "eyeOff" | "crown" | "wifi" | "wifiWeak" | "wifiOff" | "spectator" | "lock"
   | "unlock" | "shot" | "timer" | "infinity" | "spark"
   | "condition" | "vote" | "duel" | "digital"
@@ -57,6 +57,7 @@ export function Icon({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEle
     case "language": body=<><circle {...filled} cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></>; break;
     case "warning": body=<><path {...filled} d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5m0 3h.01"/></>; break;
     case "info": body=<><circle {...filled} cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></>; break;
+    case "feedback": body=<><path {...filled} d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></>; break;
     case "eye": body=<><path {...filled} d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>; break;
     case "eyeOff": body=<><path {...filled} d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><path d="m3 3 18 18"/></>; break;
     case "crown": body=<path {...filled} d="m3 7 4 4 5-7 5 7 4-4-2 11H5L3 7Z"/>; break;

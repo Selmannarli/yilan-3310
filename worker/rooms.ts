@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
+import { handleAccountRequest, isAccountRoute, type AccountEnv } from "./account";
 
-export interface Env { ROOMS: DurableObjectNamespace<GameRoom>; }
+export interface Env extends AccountEnv { ROOMS: DurableObjectNamespace<GameRoom>; }
 type Category = "condition"|"vote"|"duel"|"digital";
 type MiniKind = "odd_one"|"reflex"|"rapid_tap"|"five_seconds"|"emoji_memory"|"trust"|"quick_math"|"xox"|"bomb"|"common_answer";
 type Player = { id:string; nickname:string; avatar:string; shots:number; connected:boolean; spectator:boolean; joinedAt:number };
@@ -31,7 +32,7 @@ type RoomState = {
   disconnectDeadlines:Record<string,number>;
 };
 
-const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Content-Type, Authorization","Access-Control-Allow-Methods":"GET,POST,PUT,OPTIONS"};
 const categories:Category[]=["condition","vote","duel","digital"];
 const miniKinds:MiniKind[]=["odd_one","reflex","rapid_tap","five_seconds","emoji_memory","trust","quick_math","xox","bomb","common_answer"];
 const twoPlayerGames=new Set<MiniKind>(["trust","xox"]);
@@ -41,6 +42,7 @@ const defaultSettings=():RoomSettings=>({categoryWeights:{condition:30,vote:30,d
 
 const worker={async fetch(request:Request,env:Env):Promise<Response>{
   if(request.method==="OPTIONS")return new Response(null,{headers:cors});const url=new URL(request.url);
+  if(isAccountRoute(url.pathname))return handleAccountRequest(request,env);
   if(url.pathname==="/health")return Response.json({ok:true,service:"shot-rooms"},{headers:cors});
   if(url.pathname==="/rooms"&&request.method==="POST"){
     for(let attempt=0;attempt<12;attempt++){const code=String(randomInt(100000,999999));const room=env.ROOMS.get(env.ROOMS.idFromName(code));const created=await room.fetch(new Request(`${url.origin}/create`,{method:"POST"}));if(created.status===201)return Response.json({code},{headers:cors});}
